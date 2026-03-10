@@ -1,0 +1,14 @@
+# 컨설팅 실행 데이터 (개인 이력 — 업로드 제외)
+logs/
+archive/
+output/
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 에디터
+.vscode/
+*.swp
+*.swo
