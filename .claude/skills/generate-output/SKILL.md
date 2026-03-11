@@ -6,7 +6,7 @@ depends_on:
   - ai-score-compare
   - ai-analysis
 produces:
-  - output/[날짜]_[도메인]_[session_id]_자동화_컨설팅.txt
+  - output/Archive/[날짜]_[도메인]_[session_id]_자동화_컨설팅.txt
 ---
 
 # Generate Output Skill
@@ -47,10 +47,10 @@ common_strengths[], common_risks[], orchestrator_review
 ## STEP 1 — 출력 디렉토리 확인
 
 ```
-output/ 없으면 Bash: mkdir -p output
+output/Archive/ 없으면 Bash: mkdir -p output/Archive
 ```
 
-## STEP 1-5 — output_language 결정
+## STEP 1-5 — output_language 결정 + 조건부 로드
 
 ```
 전달값 있으면 사용 → 없으면 parsed_requirement.input_language → 없으면 "ko"
@@ -58,15 +58,23 @@ output/ 없으면 Bash: mkdir -p output
 "en"    : references/label-map.md Read 후 모든 고정 레이블 교체. 파일명에 _EN suffix. 본문 영문 생성.
 "en+ko" : [1] 영문 전체 본문 생성 → [2] 아래 구분선 + 한국어 번역 이어붙임. 파일명 _BILINGUAL suffix.
           구분선: ════════════════════ ■ 한국어 번역 (Korean Translation) ════════════════════
+
+[ROI 로드 — Method F]
+proposals[권장안].roi_calc 존재 시 → roi_calc 값 그대로 사용 (로드 불필요)
+roi_calc 없고 weekly_hours OR send_volume 존재 시 → Read("references/roi-estimation-guide.md")
+
+[Excel 병렬 로드 — Method D]
+generate_excel=true 시: excel-output-schema.md를 위 로드와 동시에 Read
+(STEP 7-E에서 별도 로드 금지 — 이미 로드됨)
 ```
 
 ## STEP 2 — 파일명 결정
 
 | output_language | base |
 |---|---|
-| ko | `YYYYMMDD_[도메인]_[session_id]_자동화_컨설팅` |
-| en | `YYYYMMDD_[domain]_[session_id]_automation_consulting_EN` |
-| en+ko | `YYYYMMDD_[domain]_[session_id]_automation_consulting_BILINGUAL` |
+| ko | `output/Archive/YYYYMMDD_[도메인]_[session_id]_자동화_컨설팅` |
+| en | `output/Archive/YYYYMMDD_[domain]_[session_id]_automation_consulting_EN` |
+| en+ko | `output/Archive/YYYYMMDD_[domain]_[session_id]_automation_consulting_BILINGUAL` |
 
 | output_mode | 파일명 (ko) | 파일명 (en/en+ko) |
 |---|---|---|
@@ -99,7 +107,7 @@ output/ 없으면 Bash: mkdir -p output
 | 고려사항 | — | ✅ |
 | 판정 | ✅ | ✅ |
 
-**출력 깊이**: 권장=전체 / 검토필요=2줄+판정사유 / 비추천=1줄
+**출력 깊이**: 권장=전체 / 검토필요=1줄 요약+판정사유 / 비추천=솔루션명+1줄 (Method E)
 
 **리스크 출력 (개발자 섹션)**: Quick=1줄요약·영향도생략 / Deep=상세(영향도·발생조건·대응)
 
@@ -141,6 +149,31 @@ MS 지원  : [confirmed ✅ | changed ⚠️ | deprecated ❌ | 미실행 —]
 ──────────────────────────────────────────────────────────────
 [비추천안]  ← 없으면 생략
   솔루션명 / 비추천이유 1줄
+
+──────────────────────────────────────────────────────────────
+[ROI 예측]  ← weekly_hours 또는 send_volume 있을 때만 출력
+
+[weekly_hours 입력된 경우]
+  현재 작업 시간    : [입력 단위 그대로] (직접 입력)
+  개선 후 예상 시간 : [effort 기준 잔여 시간] (모니터링·예외처리 포함)
+  ─────────────────────────────────────────
+  절감 효과         : [입력 단위 기준 절감량]
+                      연간 약 [연간 절감시간] ([빈도·단위 기준])
+                      구축 소요 약 [effort범위] → ROI 달성 약 [N단위]
+
+  ※ 개선 후 예상 시간은 추정값입니다.
+
+[weekly_hours = null (모름) 인 경우]
+  현재 작업 시간    : 미입력
+  개선 후 예상 시간 : [effort 기준 잔여 시간]
+
+  절감 효과 시나리오 (현재 업무 시간에 가장 가까운 항목을 참고하세요)
+
+    보수적 (주 1시간 기준) : 연간 약 [52h-잔여] 절감 / ROI 달성 약 [N]주
+    중간   (주 3시간 기준) : 연간 약 [156h-잔여] 절감 / ROI 달성 약 [N]주
+    적극적 (주 5시간 기준) : 연간 약 [260h-잔여] 절감 / ROI 달성 약 [N]주
+
+  ※ 실제 소요 시간을 알고 계시면 "ROI 재산출: [시간]" 으로 말씀해주세요.
 ```
 
 ### 3-2. 개발자 섹션
@@ -230,10 +263,11 @@ JSONL Read: logs/ai_analysis/ai_analysis_YYYYMMDD.jsonl
   공통 리스크: · [항목]
 ```
 
-## STEP 6 — 파일 쓰기
+## STEP 6 — 파일 쓰기 + Excel JSON 병행 구성 (Method D)
 
 ```
 Write 도구로 저장. 인코딩: UTF-8 / LF / BOM 없음
+저장 경로: output/Archive/
 
 integrated : 헤더 + 사용자 + 개발자 + 부록A(조건부) + 부록B(조건부) → [base].txt
 user       : 헤더 + 사용자 + 부록A(조건부) → [base]_사용자.txt
@@ -241,7 +275,43 @@ developer  : 헤더 + 개발자 + 부록A(조건부) + 부록B(조건부) → [b
 split      : user 파일 + developer 파일 각각 생성
 
 en+ko: 각 파일 맨 끝에 구분선 + 한국어 번역 블록 추가 (헤더~부록 전체 번역)
+
+[Method D — txt 구성과 동시에 Excel JSON 딕셔너리 병행 구성]
+generate_excel=true 시:
+  txt 본문 섹션을 작성하면서 excel-output-schema.md 필드값을 인메모리로 동시 수집
+  SOL_REC_REASON → txt 사용자 섹션 reason과 동일 텍스트 재사용
+  SOL_REC_FLOW   → txt 구현 흐름과 동일 텍스트 재사용
+  RISK_*         → txt 리스크에서 추출한 텍스트 재사용
+  txt Write 완료 직후 바로 JSON Write 실행 (별도 재구성 없음)
 ```
+
+## STEP 6-5 — CSV 이력 기록
+
+파일 쓰기 완료 후 `archive/Consulting_Summary.csv`에 한 줄 추가.
+
+```
+CSV 경로: archive/Consulting_Summary.csv  (고정 파일명)
+
+컬럼 (헤더):
+  날짜, 세션ID, 최종솔루션, 난이도, ROI연간절감, 산출물파일이름
+
+값 추출:
+  날짜         : 생성일시 앞 10자 (YYYY-MM-DD)
+  세션ID       : session_id
+  최종솔루션   : verdict="권장"인 proposal의 solution_id
+  난이도       : verdict="권장"인 proposal의 effort ("낮음"|"중간"|"높음", 없으면 "미확인")
+  ROI연간절감  : ROI_ANNUAL_SAVE 계산값 (weekly_hours 없으면 "")
+  산출물파일이름: 생성된 파일명 (split이면 쉼표로 연결)
+
+처리:
+  archive/ 없으면 Bash: mkdir -p archive
+  파일 없으면 Write로 헤더+행 신규 생성
+  파일 있으면 Edit으로 마지막 줄 뒤에 데이터 행만 추가 (헤더 중복 금지)
+```
+
+**실패 시**: 경고 출력 후 STEP 7 계속 진행 (CSV 실패가 산출물 생성을 막지 않음)
+
+---
 
 ## STEP 7 — 완료 보고
 
@@ -295,3 +365,5 @@ Deep AI : [포함 | 미포함]
 | 2026-03-10 | v1.4 | en+ko 이중언어 지원 추가 |
 | 2026-03-11 | v1.5 | 토큰 최적화 — 영문 레이블 매핑표를 references/label-map.md로 분리. 전체 구조 표 형식으로 압축 |
 | 2026-03-11 | v1.6 | 헤더 단순화 — 요구사항 요약 섹션 제거, 세션ID/모드/생성일시/도메인/MS지원만 표시 (~300 토큰 절감) |
+| 2026-03-11 | v1.7 | ROI 블록 조건부 출력 추가 (weekly_hours/send_volume 있을 때), STEP 6-5 CSV 이력 기록 추가 (archive/Consulting_Summary.csv 자동 append) |
+| 2026-03-11 | v1.8 | 토큰 최적화 D/E/F — D: txt+Excel JSON 병행 구성(별도 재생성 제거, ~400토큰+10~15초 절감), E: 검토필요=1줄+판정사유/비추천=솔루션명+1줄(~150~300토큰 절감), F: roi_calc 사전 수신 시 roi-estimation-guide.md 로드 생략(~200토큰 절감) |

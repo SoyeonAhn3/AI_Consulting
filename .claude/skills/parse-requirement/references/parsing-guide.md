@@ -58,6 +58,22 @@ ms_products_hint 또는 external_systems 1개 이상  → +15점
 
 ## operational_params 도메인별 수집 기준
 
+### 공통 파라미터 (모든 도메인)
+
+| 파라미터 | 설명 | 값 예시 |
+|---|---|---|
+| weekly_hours | 현재 업무 주간 소요 시간 (ROI 계산용) | `{"value": 180, "unit": "min", "input": "주 3시간"}` |
+
+`weekly_hours` 입력 파싱 규칙:
+```
+"일 1시간"      → value: 300, unit: "min/week", basis: "day"  (×5근무일)
+"월 2시간"      → value: 120, unit: "min/month", basis: "month"
+"년 12회 58시간" → value: 3480, unit: "min/year", basis: "year", count: 12
+"주 3시간"      → value: 180, unit: "min/week", basis: "week"
+"건당 10분"     → value: null, unit: "min/item", basis: "item" (send_volume과 결합)
+"모름" / 엔터   → null (시나리오 모드)
+```
+
 ### 이메일/발송 도메인
 
 | 파라미터 | 설명 | 값 예시 |

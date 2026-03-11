@@ -55,7 +55,7 @@ Bash 도구로 실행합니다 (타임아웃 120초).
 Gemini는 settings.json을 직접 읽지 않으므로 반드시 아래처럼 API 키를 환경변수로 전달합니다:
 
 ```bash
-GEMINI_API_KEY=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null) && \
+GEMINI_API_KEY=$(py -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null || python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null) && \
 GEMINI_API_KEY="$GEMINI_API_KEY" gemini -p "$ARGUMENTS 에 대해 다음을 답해줘: 1) 핵심 접근법 2) 구체적 구현 방안 3) 예상 리스크 4) 추천 이유. 한국어로 답변하되 300자 이내로 간결하게."
 ```
 

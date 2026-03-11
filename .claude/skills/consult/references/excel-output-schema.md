@@ -3,11 +3,15 @@
 
 ## 7-E-1. Excel 파일명
 
+Excel은 `output/Archive/` 가 아닌 `output/` 에 저장한다.
+
+xlsx_base = `output/YYYYMMDD_[도메인]_[session_id]_자동화_컨설팅`  (txt_base의 `output/Archive/` → `output/` 로 대체)
+
 | output_language | 파일명 |
 |---|---|
-| ko | `[txt_base]_보고서.xlsx` |
-| en | `[txt_base]_report.xlsx` |
-| en+ko | `[txt_base]_report_bilingual.xlsx` |
+| ko | `[xlsx_base]_보고서.xlsx` |
+| en | `[xlsx_base]_report.xlsx` |
+| en+ko | `[xlsx_base]_report_bilingual.xlsx` |
 
 ---
 
@@ -63,6 +67,16 @@ AI_RECOMMENDATIONS: 권장안 considerations 줄바꿈 연결
 AI_EXTRA_RISK_OPP : deep_meta.common_risks 줄바꿈 연결 | ""
 ```
 
+ROI 필드 (weekly_hours 또는 send_volume 있을 때만 포함, 없으면 필드 생략):
+```
+ROI_CURRENT_TIME   : "일 1시간" | "주 3시간" | "월 2시간" | "년 12회 58시간" | "미입력"
+ROI_IMPROVED_TIME  : "주간 약 10분" (effort 기준 자동 산출)
+ROI_SAVE_PERIOD    : "주간 약 2시간 50분" | "" (미입력 시 공백)
+ROI_ANNUAL_SAVE    : "연간 약 147시간" | "" (미입력 시 공백)
+ROI_PAYBACK        : "약 1~2주" | "약 4개월" | "약 2회차" | "" (미입력 시 공백)
+ROI_BUILD_TIME     : "약 4~8시간" (effort 기준)
+```
+
 **en 섹션** (output_language="en" 또는 "en+ko"):
 ko 섹션과 동일 키·구조, 모든 텍스트 값을 영문으로 생성.
 - SESSION_ID, PARSE_CONFIDENCE, MS_VERIFY 값은 ko와 동일
@@ -83,7 +97,7 @@ en+ko일 때 revisions는 영문 기준 작성 (KR/EN 시트 공용)
 1. Write: output/temp_[session_id].json
    {
      "output_language": "...",
-     "output_path": "output/[Excel파일명]",
+     "output_path": "output/[xlsx_base에서 파일명 부분]",   ← output/ 직접 저장 (Archive/ 아님)
      "ko": {...},   ← ko 또는 en+ko일 때만
      "en": {...},   ← en 또는 en+ko일 때만
      "revisions": [...], "rev_total": N, "rev_light": N, "rev_full": N

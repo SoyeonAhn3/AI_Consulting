@@ -66,7 +66,7 @@ codex exec "[위 프롬프트]" > /tmp/codex_result.json
 
 #### Gemini 호출
 ```bash
-GEMINI_API_KEY=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null) && \
+GEMINI_API_KEY=$(py -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null || python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null) && \
 GEMINI_API_KEY="$GEMINI_API_KEY" gemini -p "[위 프롬프트]" > /tmp/gemini_result.json
 ```
 

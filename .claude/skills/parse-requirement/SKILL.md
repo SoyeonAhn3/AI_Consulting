@@ -56,65 +56,32 @@ Read(".claude/skills/parse-requirement/references/parsing-guide.md")
 
 ## STEP 1-5 — 입력 언어 감지
 
-STEP 2 파싱 전 입력 텍스트의 언어를 감지한다.
+| 조건 | input_language |
+|---|---|
+| 한국어 문자(가-힣) 포함 | `ko` |
+| 영문 전용 (라틴 문자 주체) | `en` |
+| 혼합 (한국어 단어 3개 이상) | `ko` |
 
-```
-[언어 감지 규칙]
-- 한국어 문자(가-힣) 포함 → input_language = "ko"
-- 영문 전용 (라틴 문자 주체) → input_language = "en"
-- 혼합 시 → 주요 언어 기준으로 판단 (한국어 단어 3개 이상이면 "ko")
-
-→ 이후 모든 파싱 결과, 확인 화면, 질문, 오류 메시지를 input_language 언어로 출력
-```
+→ 이후 모든 출력(파싱 결과/확인 화면/질문/오류)을 input_language로 작성
 
 ---
 
 ## STEP 2 — Claude가 요구사항 파싱
 
-아래 기준으로 Claude가 사용자 입력을 분석한다.
-**모든 출력 텍스트는 input_language 언어로 작성한다.**
+**모든 출력 텍스트는 input_language로 작성한다.**
 
-```
-입력 텍스트를 읽고 아래 항목을 추출하세요.
-
-[domain]
-- parsing-guide.md의 도메인 목록에서 가장 적합한 1개 선택
-- 영문 입력 시 영문 도메인명 사용 가능 (예: "Finance/Accounting", "Sales/CRM")
-- 복수 도메인이 감지되면 domain에 후보 목록 나열 (사용자 선택 필요)
-
-[automation_targets]
-- 한국어: "자동화하고 싶다", "~하는 작업", "~처리", "~발송" 등
-- 영문: "automate", "process", "send", "generate" 등의 동사 패턴
-- 여러 개면 개별 항목으로 분리
-
-[current_tools]
-- 현재 사용 중인 도구/시스템 추출 (Excel, SAP, 이메일 등)
-
-[constraints]
-- 라이선스, 보안 정책, 기간, 예산 등 제약 조건 추출
-
-[external_systems]
-- current_tools 중 MS 제품이 아닌 외부 엔터프라이즈 시스템 별도 분류
-- SAP, ERP, CRM, Salesforce, Oracle 등
-
-[ms_products_hint]
-- external_systems가 있으면 Azure Logic Apps 포함 고려
-- 요구사항에서 명시된 MS 제품 + 도메인/패턴에서 추론
-
-[process_type]
-- 한국어: "매주", "매일", "정기" → 정기실행 / "~하면", "~발생 시" → 이벤트기반
-- 영문: "every day/week", "scheduled", "recurring" → Scheduled
-         "when", "triggered by", "on event" → Event-based
-         "on request", "manually" → Manual trigger
-- 복수 패턴 혼합 → 복합 / Mixed
-
-[technical_unknowns]
-- 기술 구현에 불명확한 부분 (API 접근 권한, 데이터 형식, 시스템 연동 가능 여부 등)
-
-[clarification_needed]
-- 위 항목을 채우는 데 필요한 추가 정보가 있으면 질문으로 기재
-- 영문 입력이면 영문 질문으로 작성
-```
+| 필드 | ko 키워드 | en 키워드 | 처리 규칙 |
+|---|---|---|---|
+| domain | parsing-guide.md 도메인 목록 | 영문 도메인명 허용 | 복수 감지 시 후보 나열, 사용자 선택 |
+| automation_targets | "자동화", "~처리", "~발송" | "automate", "process", "send" | 여러 개 → 개별 분리 |
+| current_tools | 도구/시스템명 직접 추출 | 동일 | — |
+| constraints | 라이선스, 보안, 기간, 예산 | license, security, deadline | — |
+| external_systems | SAP, ERP, CRM, Oracle 등 | 동일 | current_tools 중 비MS 시스템만 분류 |
+| ms_products_hint | 명시된 MS 제품 + 도메인 추론 | 동일 | external_systems 있으면 Azure Logic Apps 고려 |
+| process_type | 매주/매일/정기→정기실행 / ~하면/~발생 시→이벤트기반 | scheduled/recurring→Scheduled / when/triggered→Event-based / manually→Manual | 혼합→복합/Mixed |
+| technical_unknowns | API 권한, 데이터 형식, 연동 가능 여부 | 동일 | — |
+| clarification_needed | 위 항목 미확인 시 질문 추가 | en 입력 시 영문 질문 | — |
+| weekly_hours | 소요 시간 언급 시 자동 추출; 없으면 clarification 마지막에 추가: "현재 이 업무에 소요되는 시간은 얼마나 되나요? (예: 일 1시간, 주 3시간, 월 2시간, 모름)" | "How much time does this task currently take? (e.g., 1hr/day, 3hrs/week, 2hrs/month, unknown)" | parsing-guide.md weekly_hours 변환 규칙 적용 |
 
 ---
 
@@ -163,6 +130,8 @@ ms_products_hint 또는 external_systems → +15점 (1개 이상 존재)
   Q1. [clarification_needed[0]]
   Q2. [clarification_needed[1]]
   ...
+  Qn. 현재 이 업무에 소요되는 시간은 얼마나 되나요?
+      (예: 일 1시간 / 주 3시간 / 월 2시간 / 년 12회 58시간 / 모름)
 
 ---
 ## ❓ 이 결과가 맞나요?

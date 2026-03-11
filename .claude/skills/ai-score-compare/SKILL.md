@@ -1,6 +1,6 @@
 ---
 name: ai-score-compare
-version: 3.0
+version: 3.4
 description: MS 생태계 내 자유 제안 + 리스크 2패스 평가로 권고안을 도출한다. Quick 모드는 Claude 단독 자유 분석, Deep 모드는 AI 3종 독립 제안 + Orchestrator 상호 리뷰 + 공통 강점/리스크 추출로 처리한다. parse-requirement 완료 후 모드 선택 시 자동 실행된다.
 depends_on:
   - parse-requirement
@@ -40,18 +40,8 @@ Quick/Deep 모두 동일한 기본 스키마 사용:
 판정        : 권장 | 검토필요 | 비추천
 ```
 
-**리스크 출력 깊이:**
-
-| 항목 | Quick | Deep |
-|---|---|---|
-| 설명 | 1줄 요약 | 상세 설명 |
-| 영향도 | 생략 | 높음/중간/낮음 |
-| 발생 조건/확인 방법 | 생략 | 상세 기재 |
-| 대응 방안 | 짧게 | 상세 |
-
-**[미검증] 태그:**
-solutions.md에 없는 솔루션을 AI가 제안한 경우 솔루션명 옆에 `[미검증]` 표시.
-MS 지원 확인 단계에서 WebSearch로 보완.
+**리스크 출력 깊이·[미검증] 태그 규칙:**
+→ `risk-evaluation-guide.md` 참조 (STEP 0에서 로드)
 
 ---
 
@@ -96,16 +86,8 @@ Claude가 ParsedRequirement를 기반으로 MS 생태계 내에서 자유롭게 
 Read("references/blocklist.md")
 ```
 
-각 후보의 제품 목록을 blocklist.md와 대조:
-
-```
-차단 항목 포함 시:
-  → 해당 솔루션 즉시 제거
-  → 출력에 표시: "⛔ [제품명] — [코드]: [이유] (대체: [대체 제품])"
-  → 나머지 후보로 계속 진행
-```
-
-차단 후 후보 0개 시: "blocklist 차단으로 적합한 솔루션이 없습니다. 요구사항을 재검토해주세요."
+각 후보의 제품 목록을 blocklist.md와 대조.
+→ 차단 처리 규칙: `risk-evaluation-guide.md — blocklist 차단 처리` 참조
 
 ### Q-STEP 3 — 1패스: 후보별 리스크 평가
 
@@ -118,6 +100,27 @@ Read("references/blocklist.md")
 
 **판정 기준:**
 → `references/risk-evaluation-guide.md` 참조 (판정 기준, 비추천안 포함 조건)
+
+### Q-STEP 4-5 — ROI 사전 계산 (Method F)
+
+ParsedRequirement의 `weekly_hours`가 존재하면 권장안 난이도 기준으로 roi_calc를 계산한다.
+(weekly_hours 없으면 이 단계 스킵)
+
+```
+effort=낮음 → 개선 후 잔여: 5~10분/주,  구축 소요: 4~8시간
+effort=중간 → 개선 후 잔여: 10~20분/주, 구축 소요: 8~20시간
+effort=높음 → 개선 후 잔여: 20~30분/주, 구축 소요: 20~40시간
+
+roi_calc = {
+  "current_weekly_min":  [weekly_hours × 60],
+  "improved_weekly_min": [잔여 범위 중간값],
+  "save_weekly_min":     [current - improved],
+  "annual_save_hrs":     [save_weekly_min × 52 / 60],
+  "build_time_hrs":      [구축 소요 범위 — "N~M시간"],
+  "payback_weeks":       [build_time 최소 / save_weekly_min × 60 기준 추정 — "N~M주"]
+}
+→ 권장안 SolutionProposal에 roi_calc 첨부하여 generate-output에 전달
+```
 
 ### Q-STEP 5 — 출력
 
@@ -260,6 +263,20 @@ Quick의 Q-STEP 3~4와 동일한 기준 적용.
 
 상호 리뷰에서 도출된 추가 리스크/전제조건도 포함.
 
+### D-STEP 7-5 — ROI 사전 계산 (Method F)
+
+Q-STEP 4-5와 동일한 roi_calc 계산 로직 적용.
+권장안 난이도 기준, weekly_hours 존재 시에만 실행.
+
+```
+effort=낮음 → 잔여: 5~10분/주,  구축: 4~8시간
+effort=중간 → 잔여: 10~20분/주, 구축: 8~20시간
+effort=높음 → 잔여: 20~30분/주, 구축: 20~40시간
+
+→ roi_calc 계산 후 권장안 SolutionProposal에 첨부
+→ generate-output의 proposals[권장안].roi_calc로 전달 (roi-estimation-guide.md 로드 불필요)
+```
+
 ### D-STEP 8 — 출력
 
 기본 출력: 요약 포맷 + Deep 전용 AI 비교. 사용자가 "[N]안 상세보기" 요청 시 해당 솔루션 전체 형식 출력.
@@ -392,3 +409,4 @@ SCORE: 각 후보별
 | 2026-03-10 | v3.1 | output_language en/en+ko 지원 추가 |
 | 2026-03-10 | v3.2 | 출력 포맷 요약화 — Q-STEP 5, D-STEP 8 기본 출력을 요약 포맷으로 변경. 상세보기 트리거("[N]안 상세보기") 추가. Deep 요약에 AI 합의 필드 추가 |
 | 2026-03-11 | v3.3 | 표 출력 금지 규칙 추가 — 채점표/리스크표/분석 중간 과정 표 금지, 요약 포맷만 출력 (~800 토큰 절감) |
+| 2026-03-11 | v3.4 | Method F — ROI 사전 계산 추가: Q-STEP 4-5, D-STEP 7-5에서 weekly_hours 기반 roi_calc 계산 후 권장안에 첨부. generate-output의 roi-estimation-guide.md 로드 제거 (~300 토큰 절감) |

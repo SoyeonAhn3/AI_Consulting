@@ -26,6 +26,8 @@ C_BLACK       = "000000"
 C_TEXT_MUTED  = "757575"
 C_PURPLE_BG   = "F3E5F5"
 C_PURPLE_HDR  = "6A1B9A"
+C_TEAL_BG     = "E0F2F1"
+C_TEAL_HDR    = "00695C"
 
 # ── Helpers ──────────────────────────────────────────────────
 def _font(bold=False, size=10, color=C_BLACK, italic=False):
@@ -255,7 +257,7 @@ def build_english_sheet(wb):
         _set(ws, row, c, "")
     row += 1
 
-    for c_idx, h_val in enumerate(["Type", "Severity", "Trigger Condition", "Mitigation", "", ""], 1):
+    for c_idx, h_val in enumerate(["Type", "Severity", "", "", "", ""], 1):
         if h_val:
             _set(ws, row, c_idx, h_val, bold=True, fill=C_BRAND_LIGHT,
                  font_color=C_BRAND_DARK, h="center")
@@ -264,9 +266,9 @@ def build_english_sheet(wb):
     row += 1
 
     for r_type, r_level, r_cond, r_act in [
-        ("Security",  "High",   "{{RISK_SEC_CONDITION}}", "{{RISK_SEC_ACTION}}"),
-        ("License",   "Medium", "{{RISK_LIC_CONDITION}}", "{{RISK_LIC_ACTION}}"),
-        ("Operations","Medium", "{{RISK_OPS_CONDITION}}", "{{RISK_OPS_ACTION}}"),
+        ("Security",   "High",   "{{RISK_SEC_CONDITION}}", "{{RISK_SEC_ACTION}}"),
+        ("License",    "Medium", "{{RISK_LIC_CONDITION}}", "{{RISK_LIC_ACTION}}"),
+        ("Operations", "Medium", "{{RISK_OPS_CONDITION}}", "{{RISK_OPS_ACTION}}"),
     ]:
         ws.row_dimensions[row].height = 30
         _set(ws, row, 1, r_type,  bold=True, fill=C_GRAY_BG, h="center")
@@ -313,6 +315,27 @@ def build_english_sheet(wb):
         ws.row_dimensions[row].height = 50
         _label(ws, row, 1, lbl)
         _value(ws, row, 2, val, fill=C_PURPLE_BG, colspan=5)
+        row += 1
+
+    row += 1
+
+    # ══════════════════════════════════════════════════
+    # 5. ROI Estimation
+    # ══════════════════════════════════════════════════
+    _section(ws, row, "  5.  ROI Estimation", C_TEAL_HDR)
+    row += 1
+
+    for lbl, val in [
+        ("Current Work Time",     "{{ROI_CURRENT_TIME}}"),
+        ("Improved Work Time",    "{{ROI_IMPROVED_TIME}}"),
+        ("Time Saved (per unit)", "{{ROI_SAVE_PERIOD}}"),
+        ("Annual Time Saved",     "{{ROI_ANNUAL_SAVE}}"),
+        ("ROI Payback Period",    "{{ROI_PAYBACK}}"),
+        ("Build Time Required",   "{{ROI_BUILD_TIME}}"),
+    ]:
+        ws.row_dimensions[row].height = 22
+        _label(ws, row, 1, lbl)
+        _value(ws, row, 2, val, fill=C_TEAL_BG, colspan=5)
         row += 1
 
     row += 1

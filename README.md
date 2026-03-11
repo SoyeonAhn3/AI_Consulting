@@ -37,7 +37,7 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 | 1 | `dev-log` | general | ✅ 완료 | 에러 / 수정 이유 / 변경 내역 JSONL 기록 |
 | 2 | `ai-analysis` | general | ✅ 완료 (v2.0) | AI 호출 이력 기록 — SESSION_STATE / REVISION / MODE_SWITCH / MS_VERIFY 4개 이벤트 타입 추가 |
 | 3 | `readme-update` | general | ✅ 완료 | README 자동 갱신 스킬 |
-| 4 | `parse-requirement` | project-specific | ✅ 완료 (v4.0) | 요구사항 파싱 — session_id 생성 및 세션 상태 파일 초기화 추가. v4.0: 입력 언어 자동 감지 (ko/en) |
+| 4 | `parse-requirement` | project-specific | ✅ 완료 (v5.0) | 요구사항 파싱 — session_id 생성 및 세션 상태 파일 초기화 추가. v4.0: 입력 언어 자동 감지 (ko/en). v5.0: Q4 소요 시간 수집 (ROI 예측용) |
 | 5 | `ai-multi-discussion` | general | ✅ 완료 | AI 3자(Codex/Gemini/Claude) 의견 수집·비교·최적안 도출 |
 | 6 | `skill-template` | general | ✅ 완료 | 스킬 공통 표준 템플릿 |
 | 7 | `phase-doc` | general | ✅ 완료 | Phase 상세 개발 문서 작성·갱신 스킬 |
@@ -61,8 +61,8 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 
 | # | Skill / 모듈 | 상태 | 설명 |
 |---|---|---|---|
-| 10 | `generate-output` | ✅ v1.3 완료 | 공통 스키마 + 부록 A/B + output_mode(integrated/user/developer/split) 지원. v1.3: output_language 파라미터 + 영문 레이블 매핑표 45개 + 영문 파일명 규칙(_EN suffix) |
-| 11 | `consult` | ✅ 실행 검증 완료 | 전체 흐름 오케스트레이터. Quick/Deep 모드, 재컨설팅 A/B/C 분기, MS 지원 확인 (confirmed/changed) 실행 검증 완료 |
+| 10 | `generate-output` | ✅ v1.7 완료 | 공통 스키마 + 부록 A/B + output_mode(integrated/user/developer/split) 지원. v1.6: 헤더 단순화. v1.7: ROI 블록 조건부 출력 (weekly_hours/send_volume 있을 때) |
+| 11 | `consult` | ✅ v1.7 완료 | 전체 흐름 오케스트레이터. Quick/Deep 모드, 재컨설팅 A/B/C 분기, MS 지원 확인 (confirmed/changed) 실행 검증 완료. v1.6: STEP 3 요구사항 1줄 요약 규칙 추가. v1.7: 컨텍스트 압축 A/B/C(비선택안 최소 필드 유지, Evidence Summary 전용, 최소 필드 전달) |
 
 ---
 
@@ -81,6 +81,9 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 | 19 | Excel 보고서 생성 (.xlsx) | ✅ 구현 완료 | KR/EN 2시트 템플릿 + fill_excel_template.py (플레이스홀더 채우기·이탤릭 제거·행높이 자동조정) + consult STEP 7-E + output_language 연동 |
 | 20 | 토큰 최적화 v2 | ✅ 구현 완료 | Reference 분리 6종 (excel-output-schema / deep-mode-guide / phase-template / label-map 등), consult·generate-output SKILL.md ~50% 압축, CLAUDE.md 중복 제거 (-600토큰/턴) |
 | 21 | MS 제품 카탈로그 확장 | ✅ 구현 완료 | Forms/Planner/AI Builder solutions.md 추가(#13~15), ms-product-catalog.md 신규 — Quick/Deep 모두 전체 MS 제품군 인식 |
+| 22 | 토큰 최적화 v3 (UX 간소화) | ✅ 구현 완료 | 헤더 단순화(generate-output v1.6), 요구사항 1줄 요약(consult v1.6), 채점표·리스크표 출력 금지(ai-score-compare v3.3) — 추가 ~1,350 토큰 절감 (~27%) |
+| 23 | ROI 예측 | ✅ 구현 완료 | 소요 시간 수집(parse-requirement v5.0 Q4), ROI 블록 조건부 출력(generate-output v1.7), roi-estimation-guide.md 신규(도메인별 기준값+시나리오), Excel KR/EN 시트 ROI 섹션 추가 |
+| 24 | 토큰 최적화 v4 (SKILL.md 압축 + 컨텍스트 압축) | ✅ 구현 완료 | label-map.md 58줄→18줄(#1, ~200토큰), ai-score-compare 중복 제거(#3, ~300토큰), parse-requirement 표 압축(#5, ~300토큰). consult v1.7: 컨텍스트 압축 A/B/C(비선택안 필드 드랍+전달 최소화+Evidence only, ~800~1,600토큰/사이클). CSV 파일명 고정(archive/Consulting_Summary.csv). excel-output-schema ROI 시나리오 3필드 제거(6필드로 정리) |
 
 ---
 
@@ -105,7 +108,7 @@ n8n/
 │       └── test_YYYYMMDD.jsonl
 │
 ├── archive/                        # 이력 아카이브 (.gitignore 권장)
-│   ├── YYYYMM_summary.csv          # 월별 컨설팅 요약 (영구 보존)
+│   ├── Consulting_Summary.csv      # 컨설팅 요약 누적 (고정 파일명, 영구 보존)
 │   └── raw/                        # Cold Storage — 4주 이상 JSONL (1주 후 최종 삭제)
 │
 ├── references/
@@ -132,13 +135,13 @@ n8n/
         ├── dev-log/SKILL.md               # ✅ Phase 1 [general]
         ├── ai-analysis/SKILL.md           # ✅ Phase 1 완료 v2.0 [general]
         ├── readme-update/SKILL.md         # ✅ Phase 1 [general]
-        ├── parse-requirement/SKILL.md     # ✅ Phase 1 완료 v4.0 [project-specific]
+        ├── parse-requirement/SKILL.md     # ✅ Phase 1 완료 v5.0 [project-specific]
         ├── ai-multi-discussion/SKILL.md   # ✅ 공통 [general]
         ├── phase-doc/SKILL.md             # ✅ 공통 [general]
         ├── ms-solution-recommend/SKILL.md # ✅ Phase 2 완료 v3.0 [project-specific]
         ├── ai-score-compare/SKILL.md      # ✅ Phase 2 완료 v3.3 [project-specific]
-        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v1.5 [project-specific]
-        ├── consult/SKILL.md               # ✅ Phase 3 완료 v1.5 [project-specific]
+        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v1.7 [project-specific]
+        ├── consult/SKILL.md               # ✅ Phase 3 완료 v1.6 [project-specific]
         │   └── references/reconsult-guide.md
         ├── test-log/SKILL.md              # ✅ Phase 1 완료 [general]
         └── archive/SKILL.md               # ✅ Phase 4 완료 v1.0 [general]
@@ -347,6 +350,9 @@ session_id 형식: consult_YYYYMMDD_NNN
 | 2026-03-10 | v1.3 | #16 적합성 게이트 구현 완료(consult v1.2). #17 토큰 최적화 — ai-score-compare v3.2(기본 요약 출력+상세보기 트리거, -70%), consult v1.3(WebSearch Evidence Summary 압축, -95%). #18 archive 스킬 v1.0 신규(4주 보존+CSV 요약+Cold Storage 2단계 삭제). 경로 오류 수정 — dev-log/ai-analysis/parse-requirement mkdir 서브폴더 경로 수정. 범용 스킬에 archive 추가. |
 | 2026-03-11 | v1.4 | #19 Excel 보고서 생성 — KR/EN 2시트 템플릿(컨설팅결과_보고서_템플릿.xlsx), fill_excel_template.py(플레이스홀더 채우기·이탤릭 제거·행높이 자동조정·revision 동적 행 추가), consult STEP 6 Excel 질문 + STEP 7-E, output_language 연동(ko→KR시트 / en→EN시트 / en+ko→둘 다). consult v1.4, generate-output v1.5 |
 | 2026-03-11 | v1.5 | #20 토큰 최적화 v2 — Reference 분리 6종(excel-output-schema/deep-mode-guide/phase-template/label-map/reconsult-guide/risk-evaluation-guide), consult/generate-output SKILL.md ~50% 압축, CLAUDE.md 중복 제거(-600토큰/턴), JSON 빈 필드 skip(fill_excel_template.py regex 치환). #21 MS 제품 카탈로그 확장 — Forms/Planner/AI Builder solutions.md 추가(#13~15), ms-product-catalog.md 신규(STEP 0 항상 로드 Quick/Deep 공통). ai-score-compare v3.3, consult v1.5 |
+| 2026-03-11 | v1.6 | #22 토큰 최적화 v3 (UX 간소화) — generate-output v1.6 헤더 단순화(요구사항 요약 섹션 제거), consult v1.6 STEP 3 요구사항 1줄 요약 규칙 추가, ai-score-compare v3.3 채점표·리스크표·분석 중간 표 출력 금지. 추가 ~1,350 토큰 절감 (~27%) |
+| 2026-03-11 | v1.7 | #23 ROI 예측 — roi-estimation-guide.md 신규(도메인별 기준값+시나리오+단위변환), parse-requirement v5.0(Q4 소요시간 수집, 다단위 파싱 일/주/월/년), generate-output v1.7(ROI 블록 조건부 출력, 3시나리오 모드), excel-output-schema.md ROI 9필드, Excel KR/EN 시트 ROI 섹션(Section 5) |
+| 2026-03-11 | v1.8 | #24 토큰 최적화 v4 — label-map.md 58줄→18줄(#1), ai-score-compare 중복 리스크표+blocklist블록 제거(#3), parse-requirement STEP1-5+STEP2 표 압축(#5), 합계 ~800토큰 SKILL.md 절감. consult v1.7 컨텍스트 압축 A/B/C 추가(~800~1,600토큰/사이클). archive/Consulting_Summary.csv 고정 파일명 확정(generate-output+archive 경로 동기화). excel-output-schema ROI_SCENARIO_LOW/MID/HIGH 제거(6필드로 정리) |
 
 ---
 

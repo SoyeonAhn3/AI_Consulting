@@ -27,6 +27,8 @@ C_BLACK       = "000000"
 C_TEXT_MUTED  = "757575"
 C_PURPLE_BG   = "F3E5F5"   # AI 분석 섹션
 C_PURPLE_HDR  = "6A1B9A"
+C_TEAL_BG     = "E0F2F1"   # ROI 섹션
+C_TEAL_HDR    = "00695C"
 
 # ── 헬퍼 함수 ────────────────────────────────────────────────
 def _font(bold=False, size=10, color=C_BLACK, italic=False):
@@ -245,8 +247,7 @@ def build_template():
     _set(ws, row, 2, ""); _set(ws, row, 3, ""); _set(ws, row, 4, ""); _set(ws, row, 5, ""); _set(ws, row, 6, "")
     row += 1
 
-    risk_header = ["유형", "영향도", "발생 조건", "대응 방안", "", ""]
-    for c_idx, h_val in enumerate(risk_header, 1):
+    for c_idx, h_val in enumerate(["유형", "영향도", "", "", "", ""], 1):
         if h_val:
             _set(ws, row, c_idx, h_val, bold=True, fill=C_BRAND_LIGHT,
                  font_color=C_BRAND_DARK, h="center")
@@ -254,12 +255,11 @@ def build_template():
             _set(ws, row, c_idx, "")
     row += 1
 
-    risk_rows = [
+    for r_type, r_level, r_cond, r_act in [
         ("보안",      "높음",   "{{RISK_SEC_CONDITION}}",   "{{RISK_SEC_ACTION}}"),
         ("라이선스",  "중간",   "{{RISK_LIC_CONDITION}}",   "{{RISK_LIC_ACTION}}"),
         ("운영",      "중간",   "{{RISK_OPS_CONDITION}}",   "{{RISK_OPS_ACTION}}"),
-    ]
-    for r_type, r_level, r_cond, r_act in risk_rows:
+    ]:
         ws.row_dimensions[row].height = 30
         _set(ws, row, 1, r_type,  bold=True, fill=C_GRAY_BG, h="center")
         _set(ws, row, 2, r_level, fill=C_GRAY_BG, h="center")
@@ -306,6 +306,28 @@ def build_template():
         ws.row_dimensions[row].height = 50
         _label(ws, row, 1, lbl)
         _value(ws, row, 2, val, fill=C_PURPLE_BG, colspan=5)
+        row += 1
+
+    row += 1
+
+    # ══════════════════════════════════════════════════
+    # 5. ROI 예측
+    # ══════════════════════════════════════════════════
+    _section_title(ws, row, "  5.  ROI 예측", C_TEAL_HDR)
+    row += 1
+
+    roi_fields = [
+        ("현재 작업 시간",    "{{ROI_CURRENT_TIME}}"),
+        ("개선 후 예상 시간", "{{ROI_IMPROVED_TIME}}"),
+        ("절감 효과",         "{{ROI_SAVE_PERIOD}}"),
+        ("연간 절감 효과",    "{{ROI_ANNUAL_SAVE}}"),
+        ("ROI 달성 시점",     "{{ROI_PAYBACK}}"),
+        ("구축 소요 시간",    "{{ROI_BUILD_TIME}}"),
+    ]
+    for lbl, val in roi_fields:
+        ws.row_dimensions[row].height = 22
+        _label(ws, row, 1, lbl)
+        _value(ws, row, 2, val, fill=C_TEAL_BG, colspan=5)
         row += 1
 
     row += 1

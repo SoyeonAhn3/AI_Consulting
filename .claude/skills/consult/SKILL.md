@@ -1,6 +1,6 @@
 ---
 name: consult
-version: 1.5
+version: 1.6
 description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅" 등의 요청 시 트리거한다.
 depends_on:
   - parse-requirement
@@ -125,6 +125,19 @@ Read("references/reconsult-guide.md")
 
 **ai-analysis 기록**: 카운터 변경 시 REVISION + SESSION_STATE
 
+### 선택 확정 후 컨텍스트 압축 (토큰 최적화)
+
+사용자가 "이대로 진행(STEP 5)"을 선택하는 순간:
+
+**비선택 안(검토필요/비추천)은 아래 최소 필드만 남기고 상세 내용을 즉시 드랍한다.**
+
+| 판정 | 유지 필드 | 드랍 필드 |
+|---|---|---|
+| 검토필요 | solution_name, solution_id, reason(2줄 요약), verdict_reason, implementation(1줄 요약), risks(drop_risk=true 항목명만) | prerequisites 상세, limitations, considerations, risks 상세(drop_risk=false) |
+| 비추천 | solution_name, solution_id, verdict_reason(1줄) | 나머지 전체 |
+
+→ 권장안 full detail은 그대로 유지.
+
 ---
 
 ## STEP 5 — MS 지원 확인
@@ -146,6 +159,8 @@ WebSearch: "[제품명] [기능명] site:learn.microsoft.com" (기능별)
 ├─ Deprecated: 없음 / [있으면 대체 기능명]
 └─ 출처: [URL]
 ```
+
+Evidence Summary 작성 완료 후, WebSearch 결과 원문은 이후 컨텍스트에서 참조하지 않는다. 이후 모든 단계는 Evidence Summary만 사용한다.
 
 ### 5-2. 결과 평가 및 분류
 
@@ -213,9 +228,20 @@ Excel 언어: output_language 그대로 적용 (ko→KR시트만 / en→EN시트
 ## STEP 7 — generate-output 실행
 
 ```
-generate-output 호출:
-  session_id, mode, domain, parsed_requirement, proposals,
-  deep_meta, ms_verify_result, output_mode, output_language
+generate-output 호출 (최소 필드 전달):
+
+  session_id       : [session_id]
+  mode             : [mode]
+  domain           : [domain]
+  parsed_requirement: domain / automation_targets / current_tools / process_type 만 전달
+                      (constraints·ms_products_hint·technical_unknowns 생략)
+  selected_proposal: 권장안 full SolutionProposal
+  other_proposals  : 비선택 안은 축약 필드만 (STEP 4 압축 결과 그대로)
+  ms_verify_result : Evidence Summary만 (WebSearch 원문 제외)
+  deep_meta        : common_strengths / common_risks / orchestrator_review 만 전달
+                     (ai_proposals 각 AI 전체 제안 내용 제외)
+  output_mode      : [output_mode]
+  output_language  : [output_language]
 ```
 
 generate-output 완료 후, **generate_excel=true인 경우** 추가 실행:
@@ -317,4 +343,5 @@ Read("references/excel-output-schema.md")
 | 2026-03-10 | v1.3 | MS 지원 확인 Evidence Summary 압축 추가 |
 | 2026-03-11 | v1.4 | Excel 보고서 생성 추가 (STEP 6 Excel 질문, STEP 7-E) |
 | 2026-03-11 | v1.5 | 토큰 최적화 — 전체 구조 표/간결 형식으로 압축 (-50%) |
-| 2026-03-11 | v1.6 | STEP 3 요구사항 컨텍스트 1줄 요약 규칙 추가 — 중간 표 출력 금지 (~250 토큰 절감) |
+| 2026-03-11 | v1.5-1 | STEP 3 요구사항 컨텍스트 1줄 요약 규칙 추가 — 중간 표 출력 금지 (~250 토큰 절감) |
+| 2026-03-11 | v1.6 | 컨설팅 결과 컨텍스트 압축 3종 — A:비선택 안 즉시 축약(STEP 4), B:generate-output 최소 필드 전달(STEP 7), C:WebSearch 원문 드랍(STEP 5) (~800~1,600 토큰/사이클 절감) |
