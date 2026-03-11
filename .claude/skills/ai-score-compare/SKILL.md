@@ -55,15 +55,17 @@ MS 지원 확인 단계에서 WebSearch로 보완.
 
 ---
 
-## STEP 0 — 리스크 평가 가이드 로드
+## STEP 0 — 사전 로드
 
 평가 전 반드시 먼저 실행:
 
 ```
 Read(".claude/skills/ai-score-compare/references/risk-evaluation-guide.md")
+Read(".claude/skills/ai-score-compare/references/ms-product-catalog.md")
 ```
 
-→ 리스크 카테고리, 탈락 가능성 판단 기준, 판정 기준, Quick/Deep 표시 규칙 확인
+- `risk-evaluation-guide.md` → 리스크 카테고리, 탈락 가능성 판단 기준, 판정 기준
+- `ms-product-catalog.md` → 제안 가능한 전체 MS 제품군 및 라이선스 확인
 
 ---
 
@@ -211,6 +213,12 @@ gemini --version 2>/dev/null || echo "gemini: 미설치"
   실행 AI: Codex ✅/❌ | Gemini ✅/❌ | Claude ✅
 ```
 
+→ Deep 진행 확정 시:
+```
+Read(".claude/skills/ai-score-compare/references/deep-mode-guide.md")
+```
+(D-STEP 3 AI 프롬프트 구조 + bash 호출, D-STEP 5 Orchestrator 리뷰 형식 포함)
+
 ### D-STEP 2 — solutions.md 컨텍스트 준비
 
 ms-solution-recommend 스킬 호출:
@@ -223,80 +231,7 @@ ms-solution-recommend 실행
 
 ### D-STEP 3 — 3 AI 순차 실행 (독립 제안서)
 
-각 AI에게 동일한 구조의 프롬프트 전달. **순서 원칙 필수 준수:**
-1. 요구사항 분석 및 자유 제안 지시
-2. solutions.md 검증 데이터 (참고용)
-3. blocklist.md 차단 목록
-
-**output_language 분기:**
-```
-output_language = "ko" (기본) → 프롬프트 한국어, 응답 한국어 요청
-output_language = "en"        → 프롬프트 영문 전환, 응답 영문 요청
-  프롬프트 첫 줄에 추가: "Please respond entirely in English."
-```
-
-**공통 프롬프트 구조 (output_language = "ko" 기준):**
-```
-[요구사항]
-도메인: [domain]
-자동화 대상: [automation_targets]
-현재 도구: [current_tools]
-외부 시스템: [external_systems 또는 없음]
-제약 조건: [constraints]
-프로세스 유형: [process_type]
-
-[지시]
-MS 생태계 내에서 위 요구사항에 최적화된 솔루션을 1개 자유롭게 제안하세요.
-아래 JSON 형식으로만 응답하세요:
-
-{
-  "solution_name": "",
-  "solution_id": "핵심MS제품을+로연결",
-  "reason": "",
-  "implementation": ["단계1", "단계2"],
-  "prerequisites": ["전제조건1"],
-  "limitations": ["한계점1"],
-  "risks": [
-    {
-      "category": "보안|라이선스|운영",
-      "name": "",
-      "description": "",
-      "drop_risk": true,
-      "mitigation": ""
-    }
-  ],
-  "considerations": ["고려사항1"],
-  "verdict": "권장|검토필요|비추천",
-  "verified_in_solutions_md": true
-}
-
-[참고 데이터 — 제안을 제한하지 않음]
-[solutions_context]
-
-[차단 제품 — 포함 금지]
-[blocklist_context]
-```
-
-#### Codex 호출
-```bash
-codex exec "[위 프롬프트]" > /tmp/codex_result.json
-```
-
-#### Gemini 호출
-```bash
-GEMINI_API_KEY=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null) && \
-GEMINI_API_KEY="$GEMINI_API_KEY" gemini -p "[위 프롬프트]" > /tmp/gemini_result.json
-```
-
-#### Claude 자체 분석
-동일 프롬프트로 Claude가 직접 분석 (별도 CLI 호출 없음).
-
-#### JSON 파싱 처리
-```
-파싱 성공 → 사용
-파싱 실패 → 텍스트에서 JSON 추출 정규화 1회 재시도
-재시도 실패 → 해당 AI 제외 + FALLBACK 이벤트 기록
-```
+→ deep-mode-guide.md 참조 (프롬프트 구조, output_language 분기, Codex/Gemini/Claude 호출, JSON 파싱)
 
 각 AI 호출마다 AI_CALL 이벤트 기록.
 
@@ -307,30 +242,8 @@ GEMINI_API_KEY="$GEMINI_API_KEY" gemini -p "[위 프롬프트]" > /tmp/gemini_re
 
 ### D-STEP 5 — Claude Orchestrator: 상호 리뷰 구조화
 
-3개 제안서를 읽고 Claude가 각 AI 입장에서 예상 반론을 구조화한다.
+→ deep-mode-guide.md 참조 (Codex/Gemini/Claude 각 입장 반론 구조화 형식)
 (실제 Codex/Gemini 재호출 없음 — Claude가 시뮬레이션)
-
-```
-[Codex 제안 (솔루션 ID: XXX)에 대해]
-
-  Gemini 입장 반론:
-    강점:
-    약점:
-    누락 전제조건:
-    채택 의견:
-
-  Claude 입장 반론:
-    강점:
-    약점:
-    누락 전제조건:
-    채택 의견:
-
-[Gemini 제안 (솔루션 ID: YYY)에 대해]
-  ...
-
-[Claude 제안 (솔루션 ID: ZZZ)에 대해]
-  ...
-```
 
 ### D-STEP 6 — 공통 강점 / 공통 리스크 추출
 
@@ -466,6 +379,8 @@ SCORE: 각 후보별
 - 재컨설팅 후에도 동일 스키마로 출력 (판정 변경 시 변경 이유 명시)
 - 사용자가 권고안을 선택하기 전까지 MS 지원 확인(WebSearch) 실행 금지
 - 기본 출력은 요약 포맷. 상세 분석은 사용자 "[N]안 상세보기" 요청 시에만 출력
+- **채점 표 / 리스크 비교 표 / 후보 분석 표 출력 금지** — Q-STEP 5 / D-STEP 8 요약 포맷만 사용
+- **분석 중간 과정(자유 제안 목록, 점수 계산 과정) 출력 금지** — 최종 요약 포맷만 출력
 
 ---
 
@@ -476,3 +391,4 @@ SCORE: 각 후보별
 | 2026-03-09 | v3.0 | 최초 작성 |
 | 2026-03-10 | v3.1 | output_language en/en+ko 지원 추가 |
 | 2026-03-10 | v3.2 | 출력 포맷 요약화 — Q-STEP 5, D-STEP 8 기본 출력을 요약 포맷으로 변경. 상세보기 트리거("[N]안 상세보기") 추가. Deep 요약에 AI 합의 필드 추가 |
+| 2026-03-11 | v3.3 | 표 출력 금지 규칙 추가 — 채점표/리스크표/분석 중간 과정 표 금지, 요약 포맷만 출력 (~800 토큰 절감) |

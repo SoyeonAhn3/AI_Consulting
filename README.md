@@ -76,8 +76,11 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 | 14 | Notion 연동 | 🔲 미시작 | 산출물을 Notion 페이지에 직접 생성 |
 | 15 | 웹 UI | ⏸ 보류 | CLI 검증 이후 웹 인터페이스 제공 |
 | 16 | 적합성 게이트 (Scope Gate) | ✅ 구현 완료 | parse 직후 MS 업무자동화 적합성 판정. 진행 가능(자동 진행) / 부분 지원(사용자 확인) / 지원 대상 아님(종료) 3단계 분기. consult v1.2 |
-| 17 | 토큰 최적화 | ✅ 구현 완료 | ai-score-compare v3.2: 기본 요약 출력 + 상세보기 트리거(-70%). consult v1.3: WebSearch Evidence Summary 압축(-95%) |
+| 17 | 토큰 최적화 v1 | ✅ 구현 완료 | ai-score-compare v3.2: 기본 요약 출력 + 상세보기 트리거(-70%). consult v1.3: WebSearch Evidence Summary 압축(-95%) |
 | 18 | `archive` 이력 보존 정책 | ✅ 구현 완료 | 4주 보존 + CSV 요약(날짜/세션ID/최종솔루션/산출물파일이름) + archive/raw/ Cold Storage 2단계 삭제 |
+| 19 | Excel 보고서 생성 (.xlsx) | ✅ 구현 완료 | KR/EN 2시트 템플릿 + fill_excel_template.py (플레이스홀더 채우기·이탤릭 제거·행높이 자동조정) + consult STEP 7-E + output_language 연동 |
+| 20 | 토큰 최적화 v2 | ✅ 구현 완료 | Reference 분리 6종 (excel-output-schema / deep-mode-guide / phase-template / label-map 등), consult·generate-output SKILL.md ~50% 압축, CLAUDE.md 중복 제거 (-600토큰/턴) |
+| 21 | MS 제품 카탈로그 확장 | ✅ 구현 완료 | Forms/Planner/AI Builder solutions.md 추가(#13~15), ms-product-catalog.md 신규 — Quick/Deep 모두 전체 MS 제품군 인식 |
 
 ---
 
@@ -113,6 +116,10 @@ n8n/
 │   ├── reconsult-guide.md          # 재컨설팅 A/B/C 타입 판정 기준 + 경계 케이스 예시
 │   └── skill-map.md                # 스킬 연동 관계 / 트리거 / Reference 사용 관계
 │
+├── Word_Template/                  # Excel 보고서 생성 (#19)
+│   ├── 컨설팅결과_보고서_템플릿.xlsx  # KR + EN 2시트 템플릿 ({{PLACEHOLDER}} 형식)
+│   └── fill_excel_template.py      # JSON payload → Excel 채우기 스크립트
+│
 ├── Phase/                          # Phase별 상세 개발 문서
 │   ├── Phase1_기반구축.md           # ✅ 완료
 │   ├── Phase2_핵심엔진.md           # ✅ 재설계 완료
@@ -129,9 +136,9 @@ n8n/
         ├── ai-multi-discussion/SKILL.md   # ✅ 공통 [general]
         ├── phase-doc/SKILL.md             # ✅ 공통 [general]
         ├── ms-solution-recommend/SKILL.md # ✅ Phase 2 완료 v3.0 [project-specific]
-        ├── ai-score-compare/SKILL.md      # ✅ Phase 2 완료 v3.2 [project-specific]
-        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v1.4 [project-specific]
-        ├── consult/SKILL.md               # ✅ Phase 3 완료 v1.3 [project-specific]
+        ├── ai-score-compare/SKILL.md      # ✅ Phase 2 완료 v3.3 [project-specific]
+        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v1.5 [project-specific]
+        ├── consult/SKILL.md               # ✅ Phase 3 완료 v1.5 [project-specific]
         │   └── references/reconsult-guide.md
         ├── test-log/SKILL.md              # ✅ Phase 1 완료 [general]
         └── archive/SKILL.md               # ✅ Phase 4 완료 v1.0 [general]
@@ -338,6 +345,8 @@ session_id 형식: consult_YYYYMMDD_NNN
 | 2026-03-10 | v1.1 | Phase 4 착수 — 다국어 지원(영문) #12 SKILL.md 구현 완료. parse-requirement v4.0(입력 언어 자동 감지 ko/en, 이중 확인 화면, session 파일 input_language 필드). generate-output v1.3(output_language 파라미터, 영문 레이블 매핑표 45개, 파일명 _EN suffix). consult STEP 6 언어 선택 추가. ai-score-compare Deep 모드 영문 프롬프트 분기. |
 | 2026-03-10 | v1.2 | #12 이중언어(en+ko) 추가 — generate-output v1.4(_BILINGUAL suffix, 영문 본문+한국어 번역 단일 파일), consult 언어 선택 옵션 3번 추가. #16 적합성 게이트 설계 확정 — Phase 4 신규 항목, consult STEP 1-5 3단계 분기(진행 가능 자동/부분 지원 확인/지원 대상 아님 종료), v1.2 구현 예정. |
 | 2026-03-10 | v1.3 | #16 적합성 게이트 구현 완료(consult v1.2). #17 토큰 최적화 — ai-score-compare v3.2(기본 요약 출력+상세보기 트리거, -70%), consult v1.3(WebSearch Evidence Summary 압축, -95%). #18 archive 스킬 v1.0 신규(4주 보존+CSV 요약+Cold Storage 2단계 삭제). 경로 오류 수정 — dev-log/ai-analysis/parse-requirement mkdir 서브폴더 경로 수정. 범용 스킬에 archive 추가. |
+| 2026-03-11 | v1.4 | #19 Excel 보고서 생성 — KR/EN 2시트 템플릿(컨설팅결과_보고서_템플릿.xlsx), fill_excel_template.py(플레이스홀더 채우기·이탤릭 제거·행높이 자동조정·revision 동적 행 추가), consult STEP 6 Excel 질문 + STEP 7-E, output_language 연동(ko→KR시트 / en→EN시트 / en+ko→둘 다). consult v1.4, generate-output v1.5 |
+| 2026-03-11 | v1.5 | #20 토큰 최적화 v2 — Reference 분리 6종(excel-output-schema/deep-mode-guide/phase-template/label-map/reconsult-guide/risk-evaluation-guide), consult/generate-output SKILL.md ~50% 압축, CLAUDE.md 중복 제거(-600토큰/턴), JSON 빈 필드 skip(fill_excel_template.py regex 치환). #21 MS 제품 카탈로그 확장 — Forms/Planner/AI Builder solutions.md 추가(#13~15), ms-product-catalog.md 신규(STEP 0 항상 로드 Quick/Deep 공통). ai-score-compare v3.3, consult v1.5 |
 
 ---
 
