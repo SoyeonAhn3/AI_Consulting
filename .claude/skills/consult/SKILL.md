@@ -223,6 +223,17 @@ MS 지원 확인: [confirmed | changed | deprecated]
 
 Excel 언어: output_language 그대로 적용 (ko→KR시트만 / en→EN시트만 / en+ko→둘 다)
 
+**④ PA 플로우 설계 생성 여부** ← solution_id에 "PowerAutomate" 포함 시만 표시
+```
+[ko] PowerAutomate가 권고안에 포함되어 있습니다.
+     PA 플로우 설계 산출물을 생성할까요?
+     1.아니오 (기본)  2.예 — 플로우 다이어그램 + Copilot 프롬프트 + Blueprint JSON 생성
+[en] PowerAutomate is included in the recommendation.
+     Would you like to generate a PA flow design?
+     1.No (default)  2.Yes
+```
+매핑: 1/생략 또는 PowerAutomate 미포함→generate_pa_flow=false / 2→generate_pa_flow=true
+
 ---
 
 ## STEP 7 — generate-output 실행
@@ -253,6 +264,59 @@ Read("references/excel-output-schema.md")
 ```
 (파일명 규칙, JSON 플레이스홀더 전체 목록, 저장·호출·실패처리 포함)
 
+generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
+
+### STEP 7-P — PA 플로우 설계 생성
+
+```
+조건: generate_pa_flow=true
+
+[1] 디렉토리 확인
+    output/PA_Flow/ 없으면 Bash: mkdir -p "output/PA_Flow"
+    logs/PA_log/    없으면 Bash: mkdir -p "logs/PA_log"
+
+[2] Read("references/pa-flow-prompt-guide.md")
+
+[3] 아래 3개 섹션으로 PA_Flow.txt 구성 (consult 컨텍스트 재사용):
+    입력: solution_id / implementation[] / automation_targets / prerequisites / output_language
+
+    섹션 1 — 플로우 다이어그램 (ASCII)
+      트리거 → 조건 → 액션 순서로 시각화
+      조건 분기가 없으면 선형 흐름으로 표현
+
+    섹션 2 — PA Copilot 프롬프트
+      pa-flow-prompt-guide.md 패턴 기반 자연어 생성
+      환경 종속 값은 [플레이스홀더] 형식으로 표기
+      output_language=en 시 영문으로만 생성
+
+    섹션 3 — 수동 구현 포인트
+      필요 커넥터 목록 (공식 명칭 + 라이선스 등급)
+      핵심 액션 설정 팁 (트리거→조건→액션 순)
+      라이선스 등급 (Standard / Premium 명시)
+      사용자 설정 체크리스트 [ ] 형식
+
+    섹션 4 — 예외 처리 체크리스트
+      pa-flow-prompt-guide.md 예외 처리 패턴 기반
+      발송 실패 / 빈값 / 중복 실행 / 인증 만료 항목 생성
+      플로우 특성에 맞는 항목만 선별하여 [ ] 형식으로 출력
+
+[4] Blueprint JSON 구성
+    {
+      "session_id": "[session_id]",
+      "flow_name": "[solution_name]",
+      "trigger": { "type": "...", "connector": "...", "filter": {} },
+      "actions": [{ "step": N, "type": "...", "connector": "...", "params": {} }],
+      "connectors_required": [...],
+      "license_tier": "Standard | Premium"
+    }
+
+[5] 파일 저장
+    Write: output/PA_Flow/[YYYYMMDD]_[session_id]_PA_Flow.txt
+    Write: logs/PA_log/[YYYYMMDD]_[session_id]_PA_Flow.json
+```
+
+**실패 처리**: 저장 실패 시 경고 출력 후 STEP 8 계속 진행
+
 ---
 
 ## STEP 8 — 완료 보고
@@ -262,7 +326,9 @@ Read("references/excel-output-schema.md")
 
 세션 ID  : [session_id]
 산출물   : output/[파일명].txt
-         [generate_excel=true] output/[파일명].xlsx
+         [generate_excel=true]   output/[파일명].xlsx
+         [generate_pa_flow=true] output/PA_Flow/[날짜]_[session_id]_PA_Flow.txt
+                                 logs/PA_log/[날짜]_[session_id]_PA_Flow.json
 출력     : [통합본|사용자용|개발자용|분리본]
 언어     : [한국어|English|English+한국어]
 모드     : [Quick|Deep]
@@ -345,3 +411,4 @@ Read("references/excel-output-schema.md")
 | 2026-03-11 | v1.5 | 토큰 최적화 — 전체 구조 표/간결 형식으로 압축 (-50%) |
 | 2026-03-11 | v1.5-1 | STEP 3 요구사항 컨텍스트 1줄 요약 규칙 추가 — 중간 표 출력 금지 (~250 토큰 절감) |
 | 2026-03-11 | v1.6 | 컨설팅 결과 컨텍스트 압축 3종 — A:비선택 안 즉시 축약(STEP 4), B:generate-output 최소 필드 전달(STEP 7), C:WebSearch 원문 드랍(STEP 5) (~800~1,600 토큰/사이클 절감) |
+| 2026-03-11 | v1.8 | Phase 5 #26 PA 플로우 설계 생성 구현 — STEP 6 ④ PA 생성 여부 확인(PowerAutomate 포함 시만), STEP 7-P 신규(pa-flow-prompt-guide.md 로드, ASCII 다이어그램+Copilot 프롬프트+수동 구현 포인트, Blueprint JSON), STEP 8 완료 보고 PA 파일명 추가 |

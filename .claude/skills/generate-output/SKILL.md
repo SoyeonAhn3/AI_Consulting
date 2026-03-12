@@ -120,9 +120,16 @@ generate_excel=true 시: excel-output-schema.md를 위 로드와 동시에 Read
 
 세션 ID  : [session_id]
 모드     : [Quick | Deep]
-생성일시 : [YYYY-MM-DD HH:MM +09:00]
+생성일시 : [YYYY-MM-DD]
 도메인   : [domain]
 MS 지원  : [confirmed ✅ | changed ⚠️ | deprecated ❌ | 미실행 —]
+
+──────────────────────────────────────────────────────────────
+요구사항 요약
+  자동화 대상 : [automation_targets 핵심 1~2줄]
+  현재 도구   : [current_tools]
+  프로세스    : [process_type]
+──────────────────────────────────────────────────────────────
 ```
 
 ### 3-1. 사용자 섹션
@@ -367,3 +374,4 @@ Deep AI : [포함 | 미포함]
 | 2026-03-11 | v1.6 | 헤더 단순화 — 요구사항 요약 섹션 제거, 세션ID/모드/생성일시/도메인/MS지원만 표시 (~300 토큰 절감) |
 | 2026-03-11 | v1.7 | ROI 블록 조건부 출력 추가 (weekly_hours/send_volume 있을 때), STEP 6-5 CSV 이력 기록 추가 (archive/Consulting_Summary.csv 자동 append) |
 | 2026-03-11 | v1.8 | 토큰 최적화 D/E/F — D: txt+Excel JSON 병행 구성(별도 재생성 제거, ~400토큰+10~15초 절감), E: 검토필요=1줄+판정사유/비추천=솔루션명+1줄(~150~300토큰 절감), F: roi_calc 사전 수신 시 roi-estimation-guide.md 로드 생략(~200토큰 절감) |
+| 2026-03-11 | v1.9 | 헤더에 요구사항 요약 블록 추가 — 자동화 대상 / 현재 도구 / 프로세스 3필드 (제약 조건 제외) |

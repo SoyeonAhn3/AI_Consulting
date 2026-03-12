@@ -48,6 +48,13 @@ ls .gitignore 2>/dev/null && echo "exists" || echo "missing"
 없으면 아래 내용으로 자동 생성:
 
 ```
+# 시크릿/환경변수 (절대 커밋 금지)
+.env
+.env.*
+*.env
+api.env
+.claude/api.env
+
 # 컨설팅 실행 데이터
 logs/
 archive/
@@ -62,6 +69,13 @@ desktop.ini
 .vscode/
 *.swp
 *.swo
+```
+
+기존 `.gitignore`가 있더라도 아래 항목이 누락된 경우 자동으로 추가한다:
+
+```bash
+# .env 관련 항목 누락 여부 확인 후 추가
+grep -q "api.env\|\.env" .gitignore || echo -e "\n# 시크릿\n.env\n.env.*\n*.env\napi.env\n.claude/api.env" >> .gitignore
 ```
 
 ### 2-2. git init
@@ -203,6 +217,18 @@ GitHub 사용자명과 Personal Access Token을 입력해주세요.
 또는 SSH 키 설정을 확인해주세요.
 ```
 
+push 전 원격 저장소에 기존 커밋이 있는 경우 (non-fast-forward):
+
+```bash
+# 원격 fetch 후 README 충돌 시 로컬 우선 적용
+git fetch origin main
+git merge origin/main --allow-unrelated-histories -X ours
+# -X ours: 충돌 발생 시 로컬(ours) 파일을 자동 우선 적용 (README 포함 모든 충돌)
+git push -u origin main
+```
+
+> **README 우선 규칙**: 원격에 README가 이미 존재해도 **로컬 README를 항상 우선** 적용한다. 별도 확인 없이 자동 처리.
+
 ---
 
 ## STEP 6 — 완료 보고
@@ -227,7 +253,7 @@ GitHub 사용자명과 Personal Access Token을 입력해주세요.
 | git 미설치 | "git이 설치되어 있지 않습니다. git-scm.com에서 설치 후 재실행해주세요." |
 | remote URL 없음 | STEP 2-3으로 돌아가 URL 입력 요청 |
 | 인증 실패 (403/401) | PAT 안내 메시지 출력 후 중단 |
-| push rejected (non-fast-forward) | "원격 저장소에 로컬에 없는 변경사항이 있습니다. git pull 후 재시도해주세요." |
+| push rejected (non-fast-forward) | `git fetch origin main && git merge origin/main --allow-unrelated-histories -X ours` 후 재push |
 | 변경사항 없음 | "커밋할 변경사항이 없습니다." 후 종료 |
 | .gitignore 없음 | 자동 생성 후 진행 (STEP 2-1) |
 
@@ -235,10 +261,12 @@ GitHub 사용자명과 Personal Access Token을 입력해주세요.
 
 ## 주의사항
 
-- `git push --force` 는 절대 실행하지 않는다
+- `git push --force` 는 절대 실행하지 않는다 (히스토리 재작성이 필요한 경우만 `--force-with-lease` 허용)
 - 커밋 메시지 사용자 확인 전 `git commit` 실행 금지
 - `logs/`, `archive/`, `output/` 폴더는 .gitignore로 자동 제외됨
 - Personal Access Token은 data 필드에 기록하지 말 것
+- **`.env`, `*.env`, `api.env`, `.claude/api.env` 등 시크릿 파일은 절대 커밋하지 않는다** — `git add` 전 반드시 .gitignore 포함 여부 확인
+- **README 충돌 시 로컬 우선** — `git merge -X ours`로 자동 처리, 사용자 확인 불필요
 
 ---
 
@@ -247,3 +275,4 @@ GitHub 사용자명과 Personal Access Token을 입력해주세요.
 | 날짜 | 버전 | 내용 |
 |---|---|---|
 | 2026-03-10 | v1.0 | 최초 작성 — git init/push 통합, 커밋 메시지 자동 초안 + 사용자 확인 |
+| 2026-03-11 | v1.1 | .env 시크릿 파일 자동 제외, README 충돌 시 로컬 우선(-X ours) 자동 처리 |

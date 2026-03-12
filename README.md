@@ -66,7 +66,7 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 
 ---
 
-### Phase 4 — 품질 검증 & 확장 `[진행 중]`
+### Phase 4 — 품질 검증 & 확장 `[완료]`
 > 다국어 지원, 적합성 검증, 테스트 자동화 및 외부 서비스 연동 확장
 
 | # | Skill / 모듈 | 상태 | 설명 |
@@ -84,6 +84,16 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 | 22 | 토큰 최적화 v3 (UX 간소화) | ✅ 구현 완료 | 헤더 단순화(generate-output v1.6), 요구사항 1줄 요약(consult v1.6), 채점표·리스크표 출력 금지(ai-score-compare v3.3) — 추가 ~1,350 토큰 절감 (~27%) |
 | 23 | ROI 예측 | ✅ 구현 완료 | 소요 시간 수집(parse-requirement v5.0 Q4), ROI 블록 조건부 출력(generate-output v1.7), roi-estimation-guide.md 신규(도메인별 기준값+시나리오), Excel KR/EN 시트 ROI 섹션 추가 |
 | 24 | 토큰 최적화 v4 (SKILL.md 압축 + 컨텍스트 압축) | ✅ 구현 완료 | label-map.md 58줄→18줄(#1, ~200토큰), ai-score-compare 중복 제거(#3, ~300토큰), parse-requirement 표 압축(#5, ~300토큰). consult v1.7: 컨텍스트 압축 A/B/C(비선택안 필드 드랍+전달 최소화+Evidence only, ~800~1,600토큰/사이클). CSV 파일명 고정(archive/Consulting_Summary.csv). excel-output-schema ROI 시나리오 3필드 제거(6필드로 정리) |
+
+---
+
+### Phase 5 — PA 플로우 설계 생성 `[완료]`
+> Power Automate 권고안 확정 시 즉시 활용 가능한 플로우 설계 산출물 자동 생성
+
+| # | Skill / 모듈 | 상태 | 설명 |
+|---|---|---|---|
+| 25 | 산출물 헤더 요구사항 요약 블록 추가 | ✅ 구현 완료 | generate-output v1.9: 공통 헤더에 자동화 대상/현재 도구/프로세스 3필드 (제약 조건 제외). 생성일시 날짜만 표기 |
+| 26 | PA 플로우 설계 생성 | ✅ 구현 완료 | consult STEP 7-P: 플로우 다이어그램+Copilot 프롬프트+수동 구현 포인트+예외 처리 체크리스트. output/PA_Flow/.txt + logs/PA_log/.json(Blueprint). pa-flow-prompt-guide.md 신규. ~1,800토큰/실행 |
 
 ---
 
@@ -327,7 +337,8 @@ session_id 형식: consult_YYYYMMDD_NNN
 | [Phase1_기반구축.md](./Phase/Phase1_기반구축.md) | ✅ 완료 / 🔄 일부 수정 예정 | dev-log, ai-analysis, readme-update, parse-requirement, ai-multi-discussion, skill-template |
 | [Phase2_핵심엔진.md](./Phase/Phase2_핵심엔진.md) | ✅ 재설계 완료 | ms-solution-recommend v3.0, ai-score-compare v3.0, blocklist.md |
 | [Phase3_산출물생성.md](./Phase/Phase3_산출물생성.md) | ✅ 실행 검증 완료 | generate-output v1.2, consult v1.0 / Quick·Deep 전체 흐름 + 재컨설팅 A/B/C 분기 실행 검증 완료 |
-| [Phase4_품질검증.md](./Phase/Phase4_품질검증.md) | 🚧 진행 중 | 다국어 지원(영문) SKILL.md 구현 완료 (#12). generate-test-list, Notion 연동 미시작 |
+| [Phase4_품질검증.md](./Phase/Phase4_품질검증.md) | ✅ 완료 | 다국어/적합성 게이트/Excel/토큰최적화v2~v4/ROI 예측 완료 (#12~#24) |
+| [Phase5_PA플로우설계.md](./Phase/Phase5_PA플로우설계.md) | 🚧 진행 중 | 산출물 헤더 요구사항 요약(#25 완료), PA 플로우 설계 생성(#26 구현 예정) |
 
 ---
 
@@ -353,6 +364,8 @@ session_id 형식: consult_YYYYMMDD_NNN
 | 2026-03-11 | v1.6 | #22 토큰 최적화 v3 (UX 간소화) — generate-output v1.6 헤더 단순화(요구사항 요약 섹션 제거), consult v1.6 STEP 3 요구사항 1줄 요약 규칙 추가, ai-score-compare v3.3 채점표·리스크표·분석 중간 표 출력 금지. 추가 ~1,350 토큰 절감 (~27%) |
 | 2026-03-11 | v1.7 | #23 ROI 예측 — roi-estimation-guide.md 신규(도메인별 기준값+시나리오+단위변환), parse-requirement v5.0(Q4 소요시간 수집, 다단위 파싱 일/주/월/년), generate-output v1.7(ROI 블록 조건부 출력, 3시나리오 모드), excel-output-schema.md ROI 9필드, Excel KR/EN 시트 ROI 섹션(Section 5) |
 | 2026-03-11 | v1.8 | #24 토큰 최적화 v4 — label-map.md 58줄→18줄(#1), ai-score-compare 중복 리스크표+blocklist블록 제거(#3), parse-requirement STEP1-5+STEP2 표 압축(#5), 합계 ~800토큰 SKILL.md 절감. consult v1.7 컨텍스트 압축 A/B/C 추가(~800~1,600토큰/사이클). archive/Consulting_Summary.csv 고정 파일명 확정(generate-output+archive 경로 동기화). excel-output-schema ROI_SCENARIO_LOW/MID/HIGH 제거(6필드로 정리) |
+| 2026-03-11 | v1.9 | Phase 5 착수 — #25 산출물 헤더 요구사항 요약 블록 ✅ 완료(generate-output v1.9, 자동화 대상/현재 도구/프로세스 3필드). #26 PA 플로우 설계 생성 설계 확정(consult STEP 7-P 신규, output/PA_Flow/.txt + logs/PA_log/.json, pa-flow-prompt-guide.md 신규 예정, ~1,800토큰/실행). Phase 4 완료 처리 |
+| 2026-03-11 | v2.0 | Phase 5 완료 — #26 PA 플로우 설계 생성 ✅ 구현 완료. consult v1.8(STEP 7-P: 4섹션 구성+예외처리 체크리스트), pa-flow-prompt-guide.md(트리거 8종/커넥터표/복잡도/예외처리 패턴/예시 3종), 산출물 생성일시 날짜만 표기(generate-output v1.9 / consult STEP 7-P). Phase 5 완료 처리 |
 
 ---
 
