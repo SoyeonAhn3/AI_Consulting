@@ -1,7 +1,7 @@
 ---
 name: consult
 version: 1.6
-description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅" 등의 요청 시 트리거한다.
+description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅", "어떻게 자동화할 수 있어", "어떻게 자동화 할 지 알려줘", "자동화하고 싶어", "자동으로 하고 싶어", "업무를 자동화", "~를 자동화", "자동화 가능해?", "어떻게 하면 자동화", "업무 효율화", "반복 업무 줄이고 싶어", "자동으로 처리하고 싶어" 등 업무 자동화 관련 요청 시 트리거한다.
 depends_on:
   - parse-requirement
   - ai-score-compare
