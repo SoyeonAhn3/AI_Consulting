@@ -2,13 +2,14 @@
 컨설팅 결과 보고서 Excel 템플릿 생성 스크립트
 실행: py create_excel_template.py
 """
+import os
 import openpyxl
 from openpyxl.styles import (
     Font, PatternFill, Alignment, Border, Side, GradientFill
 )
 from openpyxl.utils import get_column_letter
 
-OUTPUT_PATH = "C:/Users/sy.ahn/OneDrive - Bosch Group/AI Development/AI_Consulting/Word_Template/컨설팅결과_보고서_템플릿.xlsx"
+OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "컨설팅결과_보고서_템플릿.xlsx")
 
 # ── 색상 팔레트 ──────────────────────────────────────────────
 C_BRAND_DARK  = "1A3A5C"   # 진남색 (헤더 배경)
