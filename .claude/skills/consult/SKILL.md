@@ -1,6 +1,6 @@
 ---
 name: consult
-version: 1.6
+version: 2.0
 description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅" 등의 요청 시 트리거한다.
 depends_on:
   - parse-requirement
@@ -90,9 +90,13 @@ ai-analysis 기록: AI_CALL × N, FALLBACK(실패 시), SCORE × 제안 수
 
 ---
 
-## STEP 3-5 — 재컨설팅 타입 판정 가이드 로드
+## STEP 3-5 — 재컨설팅 타입 판정 가이드 (지연 로드)
+
+reconsult-guide.md는 사용자가 피드백을 제공할 때만 로드한다.
+사용자가 "이대로 진행"을 선택하면 로드하지 않는다. (~522 토큰 절감)
 
 ```
+[STEP 4에서 피드백 수신 시에만]
 Read("references/reconsult-guide.md")
 ```
 
@@ -439,3 +443,4 @@ generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
 | 2026-03-11 | v1.5-1 | STEP 3 요구사항 컨텍스트 1줄 요약 규칙 추가 — 중간 표 출력 금지 (~250 토큰 절감) |
 | 2026-03-11 | v1.6 | 컨설팅 결과 컨텍스트 압축 3종 — A:비선택 안 즉시 축약(STEP 4), B:generate-output 최소 필드 전달(STEP 7), C:WebSearch 원문 드랍(STEP 5) (~800~1,600 토큰/사이클 절감) |
 | 2026-03-11 | v1.8 | Phase 5 #26 PA 플로우 설계 생성 구현 — STEP 6 ④ PA 생성 여부 확인(PowerAutomate 포함 시만), STEP 7-P 신규(pa-flow-prompt-guide.md 로드, ASCII 다이어그램+Copilot 프롬프트+수동 구현 포인트, Blueprint JSON), STEP 8 완료 보고 PA 파일명 추가 |
+| 2026-03-15 | v2.0 | 성능 최적화 — reconsult-guide.md 지연 로드 (피드백 시에만, ~522토큰 절감), ai-score-compare에서 blocklist_context 전달 구조 반영 |

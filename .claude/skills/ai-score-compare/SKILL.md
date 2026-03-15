@@ -1,6 +1,6 @@
 ---
 name: ai-score-compare
-version: 3.4
+version: 4.0
 description: MS 생태계 내 자유 제안 + 리스크 2패스 평가로 권고안을 도출한다. Quick 모드는 Claude 단독 자유 분석, Deep 모드는 AI 3종 독립 제안 + Orchestrator 상호 리뷰 + 공통 강점/리스크 추출로 처리한다. parse-requirement 완료 후 모드 선택 시 자동 실행된다.
 depends_on:
   - parse-requirement
@@ -41,21 +41,196 @@ Quick/Deep 모두 동일한 기본 스키마 사용:
 ```
 
 **리스크 출력 깊이·[미검증] 태그 규칙:**
-→ `risk-evaluation-guide.md` 참조 (STEP 0에서 로드)
+→ STEP 0 인라인 리스크 평가 가이드 참조
 
 ---
 
-## STEP 0 — 사전 로드
+## STEP 0 — 평가 참조 데이터 (인라인)
 
-평가 전 반드시 먼저 실행:
+아래 데이터를 평가 시 참조한다. (별도 파일 로드 불필요)
+
+### 리스크 평가 가이드
+
+ai-score-compare 스킬이 리스크 평가 및 권고안 판정 시 참조하는
+카테고리 정의, 탈락 기준, 판정 규칙.
+
+---
+
+#### 리스크 카테고리
+
+| 카테고리 | 태그 | 해당 항목 |
+|---|---|---|
+| 보안 | `(보안)` | DLP 정책 차단, 데이터 접근 권한, 컴플라이언스, 외부 발송 제한 |
+| 라이선스 | `(라이선스)` | 라이선스 부재, 추가 비용 발생, 플랜 제한, 구독 필요 |
+| 운영 | `(운영)` | 유지보수 부담, 담당자 의존, 장애 대응, 실패 알림 부재 |
+
+---
+
+#### 1패스: 탈락 가능성 (drop_risk) 판단 기준
+
+각 리스크에 대해 아래 질문으로 YES/NO 판정:
 
 ```
-Read(".claude/skills/ai-score-compare/references/risk-evaluation-guide.md")
-Read(".claude/skills/ai-score-compare/references/ms-product-catalog.md")
+이 리스크가 실제로 발생하면 이 솔루션 자체가 탈락하는가?
+
+  YES (drop_risk = true)
+    - 솔루션 구현 자체가 불가능해지는 경우
+    - 핵심 요구사항을 달성할 수 없게 되는 경우
+    예) DLP 정책으로 외부 발송 완전 차단 → 메일 발송 자동화 목적 달성 불가
+
+  NO (drop_risk = false)
+    - 추가 작업이나 조건 충족으로 해소 가능한 경우
+    - 인지하고 대응 방안을 적용하면 충분한 경우
+    예) 발송 실패 시 알림 없음 → 별도 모니터링 구성으로 보완 가능
 ```
 
-- `risk-evaluation-guide.md` → 리스크 카테고리, 탈락 가능성 판단 기준, 판정 기준
-- `ms-product-catalog.md` → 제안 가능한 전체 MS 제품군 및 라이선스 확인
+---
+
+#### Quick 모드 리스크 표시 기준
+
+```
+drop_risk = YES                              → 반드시 표시 (심각도 무관)
+drop_risk = NO + 심각도 높음                 → 표시
+drop_risk = NO + 심각도 중간/낮음            → 생략
+```
+
+---
+
+#### Deep 모드 리스크 표시 기준
+
+drop_risk YES/NO 무관 모든 리스크 표시. 상세 형식 사용:
+
+```
+(카테고리) 리스크명:
+  영향도      : 높음 / 중간 / 낮음
+  발생 조건   : [구체적 발생 상황]
+  확인 방법   : [사전 확인 방법]
+  대응 방안   : [구체적 대응책]
+  탈락 가능성 : YES / NO
+```
+
+---
+
+#### 2패스: 판정 기준 (verdict)
+
+리스크 평가 결과를 반영하여 최종 판정:
+
+| 판정 | 조건 |
+|---|---|
+| `권장` | drop_risk = YES 리스크가 없거나 모두 대응 가능한 수준 |
+| `검토필요` | drop_risk = YES 리스크가 있으나 조건부 해소 가능 (확인 필요) |
+| `비추천` | 아래 조건 중 하나: 핵심 요구사항 충족 불가가 명확 / 라이선스·운영 리스크가 해소 불가 수준 |
+
+#### 비추천안 포함 조건
+
+```
+교육적 가치가 있을 때만 포함 (optional):
+  - "왜 이 방법은 안 되는지"를 설명할 수 있는 경우
+  - 사용자가 이미 해당 방법을 고려했을 가능성이 있는 경우
+
+비추천안도 없으면: 섹션 생략
+```
+
+---
+
+#### 판정별 출력 깊이
+
+| 판정 | Quick 출력 항목 | Deep 출력 항목 |
+|---|---|---|
+| `권장` | 전체 (이유·구현개요·전제조건·한계점·리스크·고려사항) | 동일 + 상호 리뷰 반영 내용 |
+| `검토필요` | 솔루션명·ID·이유 2줄·판정사유 | 동일 |
+| `비추천` | 솔루션명·ID·비추천이유 1줄 | 동일 |
+
+---
+
+#### 리스크 출력 깊이 (Quick vs Deep)
+
+| 항목 | Quick | Deep |
+|---|---|---|
+| 설명 | 1줄 요약 | 상세 설명 |
+| 영향도 | 생략 | 높음 / 중간 / 낮음 |
+| 발생 조건 | 생략 | 구체적 발생 상황 + 확인 방법 |
+| 대응 방안 | 짧게 (핵심만) | 상세 (단계적 대응책) |
+
+---
+
+#### blocklist 차단 처리
+
+blocklist 차단 항목 포함 솔루션 처리:
+
+```
+차단 항목 포함 시:
+  → 해당 솔루션 즉시 제거
+  → 출력: "⛔ [제품명] — [코드]: [이유] (대체: [대체 제품])"
+  → 나머지 후보로 계속 진행
+
+차단 후 후보 0개 시:
+  → "blocklist 차단으로 적합한 솔루션이 없습니다. 요구사항을 재검토해주세요."
+```
+
+---
+
+#### [미검증] 태그 규칙
+
+```
+Quick 모드: solutions.md에 없는 제안 → [미검증] 태그 표시
+  → MS 지원 확인(confirmed) 완료 후 자동 해제
+  → MS 지원 확인 미실행 시 유지
+
+Deep 모드: solutions.md 미등재 제안 → unverified = true 자동 설정
+```
+
+### MS 제품 카탈로그
+
+솔루션 제안 시 이 목록에서 요구사항에 맞는 제품을 자유롭게 조합할 것.
+
+---
+
+#### Microsoft 365 Business Standard 포함 제품
+
+| 제품 | 카테고리 | 주요 자동화 용도 |
+|---|---|---|
+| Power Automate | 워크플로 | 트리거 기반 업무 흐름 자동화, 시스템 간 연동 |
+| Power Apps | 앱 개발 | 데이터 입력/조회 UI, 모바일·현장 앱 |
+| Teams | 협업 | 알림 발송, 채널 관리, 챗봇, 승인 흐름 |
+| SharePoint | 문서/데이터 | 문서 관리, 리스트(DB 대체), 포털, 버전관리 |
+| Forms | 데이터 수집 | 설문·신청서·점검표·퀴즈 → 자동 집계/알림 |
+| Outlook | 이메일 | 이메일 발송·수신·분류·자동 응답 |
+| Excel + Office Scripts | 스프레드시트 | 데이터 가공·집계·보고서 생성 자동화 |
+| Planner | 업무 관리 | 작업 생성·배정·진행 추적·완료 알림 |
+| OneDrive | 파일 저장 | 파일 동기화·공유·백업 자동화 |
+| Word | 문서 작성 | 템플릿 기반 보고서·계약서 자동 생성 |
+
+---
+
+#### Power Platform 추가 구독 필요
+
+| 제품 | 라이선스 | 주요 자동화 용도 |
+|---|---|---|
+| Power BI | Pro 또는 Premium | 데이터 시각화, KPI 대시보드, 자동 리포트 |
+| AI Builder | credits 필요 | OCR, 문서 인식·분류, 양식 데이터 자동 추출 |
+| Copilot Studio | 별도 라이선스 | 챗봇·AI 에이전트, FAQ 자동 응답, 티켓 생성 |
+
+---
+
+#### Azure (별도 구독 필요 — 구현 난이도 높음)
+
+| 제품 | 주요 자동화 용도 |
+|---|---|
+| Azure Logic Apps | 엔터프라이즈 워크플로, ERP·SAP·레거시 API 연동 |
+| Azure AI Services / OpenAI | LLM 기반 자동화, 문서 인텔리전스, OCR, 음성인식 |
+| Azure Functions | 서버리스 코드 실행, 복잡한 데이터 처리 |
+| Microsoft Fabric | 대용량 데이터 파이프라인, 데이터레이크 통합 분석 |
+
+---
+
+#### 솔루션 제안 시 주의사항
+
+- **solutions.md 미등재 제품** 제안 시 `[미검증]` 태그 필수
+- **Azure 제품**: effort=높음, "Azure 구독 필요" 전제조건 명시
+- **AI Builder**: "AI Builder credits 소진 시 추가 비용 발생" 리스크 명시
+- **Copilot Studio**: "별도 라이선스 확인 필요" 전제조건 명시
+- **단일 제품보다 조합**: 요구사항에 맞게 2~3개 제품을 조합한 솔루션 권장
 
 ---
 
@@ -80,26 +255,33 @@ Claude가 ParsedRequirement를 기반으로 MS 생태계 내에서 자유롭게 
 
 최대 3개 후보 도출 (최소 1개 필수).
 
-### Q-STEP 2 — blocklist.md 차단 체크
+### Q-STEP 2 — blocklist 차단 체크
 
-```
-Read("references/blocklist.md")
-```
+아래 인라인 차단 목록으로 체크한다.
 
-각 후보의 제품 목록을 blocklist.md와 대조.
-→ 차단 처리 규칙: `risk-evaluation-guide.md — blocklist 차단 처리` 참조
+### 차단 목록 (blocklist)
+
+- Microsoft Stream (클래식) — B001, deprecated 2024-02, 대체: Microsoft Stream (SharePoint 기반)
+- Skype for Business — B001, deprecated 2021-07, 대체: Microsoft Teams
+- Microsoft Flow (구 명칭) — B001, deprecated 2019-11, 대체: Power Automate
+- B002/B003: 현재 없음
+
+차단 적용: 제안된 솔루션에 위 제품 포함 시 즉시 제거 + 사유 표시
+
+각 후보의 제품 목록을 위 차단 목록과 대조.
+→ STEP 0 인라인 blocklist 차단 처리 규칙 참조
 
 ### Q-STEP 3 — 1패스: 후보별 리스크 평가
 
 각 후보에 대해 권고안 미확정 상태에서 리스크를 평가한다.
 
 **평가 질문 및 카테고리, 표시 기준:**
-→ `references/risk-evaluation-guide.md` 참조 (STEP 0에서 로드)
+→ STEP 0 인라인 리스크 평가 가이드 참조
 
 ### Q-STEP 4 — 2패스: 권고안 확정
 
 **판정 기준:**
-→ `references/risk-evaluation-guide.md` 참조 (판정 기준, 비추천안 포함 조건)
+→ STEP 0 인라인 판정 기준 참조
 
 ### Q-STEP 4-5 — ROI 사전 계산 (Method F)
 
@@ -216,11 +398,113 @@ gemini --version 2>/dev/null || echo "gemini: 미설치"
   실행 AI: Codex ✅/❌ | Gemini ✅/❌ | Claude ✅
 ```
 
-→ Deep 진행 확정 시:
+→ Deep 진행 확정 시 아래 인라인 가이드 참조:
+
+### Deep 모드 실행 가이드 (인라인)
+
+#### D-STEP 3 프롬프트 구조
+
+각 AI에게 동일한 구조의 프롬프트 전달. **순서 원칙 필수 준수:**
+1. 요구사항 분석 및 자유 제안 지시
+2. solutions.md 검증 데이터 (참고용)
+3. blocklist.md 차단 목록
+
+**output_language 분기:**
 ```
-Read(".claude/skills/ai-score-compare/references/deep-mode-guide.md")
+output_language = "ko" (기본) → 프롬프트 한국어, 응답 한국어 요청
+output_language = "en"        → 프롬프트 영문 전환, 응답 영문 요청
+  프롬프트 첫 줄에 추가: "Please respond entirely in English."
 ```
-(D-STEP 3 AI 프롬프트 구조 + bash 호출, D-STEP 5 Orchestrator 리뷰 형식 포함)
+
+**공통 프롬프트 구조 (output_language = "ko" 기준):**
+```
+[요구사항]
+도메인: [domain]
+자동화 대상: [automation_targets]
+현재 도구: [current_tools]
+외부 시스템: [external_systems 또는 없음]
+제약 조건: [constraints]
+프로세스 유형: [process_type]
+
+[지시]
+MS 생태계 내에서 위 요구사항에 최적화된 솔루션을 1개 자유롭게 제안하세요.
+아래 JSON 형식으로만 응답하세요:
+
+{
+  "solution_name": "",
+  "solution_id": "핵심MS제품을+로연결",
+  "reason": "",
+  "implementation": ["단계1", "단계2"],
+  "prerequisites": ["전제조건1"],
+  "limitations": ["한계점1"],
+  "risks": [
+    {
+      "category": "보안|라이선스|운영",
+      "name": "",
+      "description": "",
+      "drop_risk": true,
+      "mitigation": ""
+    }
+  ],
+  "considerations": ["고려사항1"],
+  "verdict": "권장|검토필요|비추천",
+  "verified_in_solutions_md": true
+}
+
+[참고 데이터 — 제안을 제한하지 않음]
+[solutions_context]
+
+[차단 제품 — 포함 금지]
+[blocklist_context]
+```
+
+#### Codex 호출
+```bash
+codex exec "[위 프롬프트]" > /tmp/codex_result.json
+```
+
+#### Gemini 호출
+```bash
+GEMINI_API_KEY=$(py -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null || python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.gemini/settings.json'))); print(d.get('GEMINI_API_KEY',''))" 2>/dev/null) && \
+GEMINI_API_KEY="$GEMINI_API_KEY" gemini -p "[위 프롬프트]" > /tmp/gemini_result.json
+```
+
+#### Claude 자체 분석
+동일 프롬프트로 Claude가 직접 분석 (별도 CLI 호출 없음).
+
+#### JSON 파싱 처리
+```
+파싱 성공 → 사용
+파싱 실패 → 텍스트에서 JSON 추출 정규화 1회 재시도
+재시도 실패 → 해당 AI 제외 + FALLBACK 이벤트 기록
+```
+
+#### D-STEP 5 Orchestrator 리뷰 형식
+
+3개 제안서를 읽고 Claude가 각 AI 입장에서 예상 반론을 구조화한다.
+(실제 Codex/Gemini 재호출 없음 — Claude가 시뮬레이션)
+
+```
+[Codex 제안 (솔루션 ID: XXX)에 대해]
+
+  Gemini 입장 반론:
+    강점:
+    약점:
+    누락 전제조건:
+    채택 의견:
+
+  Claude 입장 반론:
+    강점:
+    약점:
+    누락 전제조건:
+    채택 의견:
+
+[Gemini 제안 (솔루션 ID: YYY)에 대해]
+  ...
+
+[Claude 제안 (솔루션 ID: ZZZ)에 대해]
+  ...
+```
 
 ### D-STEP 2 — solutions.md 컨텍스트 준비
 
@@ -232,9 +516,15 @@ ms-solution-recommend 실행
   → blocklist_context 수신 (차단 목록)
 ```
 
-### D-STEP 3 — 3 AI 순차 실행 (독립 제안서)
+### D-STEP 3 — 3 AI 병렬 실행 (독립 제안서)
 
-→ deep-mode-guide.md 참조 (프롬프트 구조, output_language 분기, Codex/Gemini/Claude 호출, JSON 파싱)
+**⚡ 병렬 실행 최적화**: Codex와 Gemini를 동시에 실행한다.
+1. Codex CLI 실행: `run_in_background: true` 파라미터 사용
+2. Gemini CLI 실행: 즉시 실행 (포그라운드)
+3. Gemini 완료 후 Codex 결과 수집: `TaskOutput` 도구로 Codex 결과 조회
+4. Claude 자체 분석: 병렬 실행 중 또는 완료 후 즉시
+
+→ 나머지는 인라인 Deep 모드 가이드 참조 (프롬프트 구조, JSON 파싱 등)
 
 각 AI 호출마다 AI_CALL 이벤트 기록.
 
@@ -245,7 +535,7 @@ ms-solution-recommend 실행
 
 ### D-STEP 5 — Claude Orchestrator: 상호 리뷰 구조화
 
-→ deep-mode-guide.md 참조 (Codex/Gemini/Claude 각 입장 반론 구조화 형식)
+→ D-STEP 1 인라인 Deep 모드 가이드 참조 (Codex/Gemini/Claude 각 입장 반론 구조화 형식)
 (실제 Codex/Gemini 재호출 없음 — Claude가 시뮬레이션)
 
 ### D-STEP 6 — 공통 강점 / 공통 리스크 추출
@@ -377,7 +667,7 @@ SCORE: 각 후보별
 
 | 실패 유형 | 처리 방법 |
 |---|---|
-| blocklist.md 로드 실패 | 경고 표시 후 차단 체크 없이 진행 |
+| blocklist 데이터 누락 | 경고 표시 후 차단 체크 없이 진행 |
 | Codex CLI 실패/타임아웃 | FALLBACK 기록 + Gemini+Claude 2자 비교로 진행 |
 | Gemini CLI 실패/인증 오류 | FALLBACK 기록 + Codex+Claude 2자 비교로 진행 |
 | JSON 파싱 2회 실패 | 해당 AI 제외 + FALLBACK 기록 + 나머지로 진행 |
@@ -410,3 +700,4 @@ SCORE: 각 후보별
 | 2026-03-10 | v3.2 | 출력 포맷 요약화 — Q-STEP 5, D-STEP 8 기본 출력을 요약 포맷으로 변경. 상세보기 트리거("[N]안 상세보기") 추가. Deep 요약에 AI 합의 필드 추가 |
 | 2026-03-11 | v3.3 | 표 출력 금지 규칙 추가 — 채점표/리스크표/분석 중간 과정 표 금지, 요약 포맷만 출력 (~800 토큰 절감) |
 | 2026-03-11 | v3.4 | Method F — ROI 사전 계산 추가: Q-STEP 4-5, D-STEP 7-5에서 weekly_hours 기반 roi_calc 계산 후 권장안에 첨부. generate-output의 roi-estimation-guide.md 로드 제거 (~300 토큰 절감) |
+| 2026-03-15 | v4.0 | 성능 최적화 — risk-evaluation-guide/ms-product-catalog/blocklist/deep-mode-guide 인라인 통합 (Read() 4회 제거), D-STEP 3 Codex+Gemini 병렬 실행 (~30-60초 절감) |

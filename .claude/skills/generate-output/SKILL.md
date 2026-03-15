@@ -1,6 +1,6 @@
 ---
 name: generate-output
-version: 1.5
+version: 2.0
 description: ai-score-compare의 최종 권고안(SolutionProposal)을 공통 스키마 기반 본문 + 재컨설팅 이력 부록(A) + Deep AI 비교 부록(B)으로 구성된 산출물 파일을 생성한다. output_mode에 따라 통합본(기본) / 사용자용 / 개발자용 / 분리본으로 출력한다. consult 스킬에서 사용자 최종 확인 후 호출한다.
 depends_on:
   - ai-score-compare
@@ -50,22 +50,40 @@ common_strengths[], common_risks[], orchestrator_review
 output/Archive/ 없으면 Bash: mkdir -p output/Archive
 ```
 
-## STEP 1-5 — output_language 결정 + 조건부 로드
+## STEP 1-5 — output_language 결정
 
 ```
 전달값 있으면 사용 → 없으면 parsed_requirement.input_language → 없으면 "ko"
 
-"en"    : references/label-map.md Read 후 모든 고정 레이블 교체. 파일명에 _EN suffix. 본문 영문 생성.
+"en"    : 아래 인라인 레이블 매핑으로 모든 고정 레이블 교체. 파일명에 _EN suffix. 본문 영문 생성.
 "en+ko" : [1] 영문 전체 본문 생성 → [2] 아래 구분선 + 한국어 번역 이어붙임. 파일명 _BILINGUAL suffix.
           구분선: ════════════════════ ■ 한국어 번역 (Korean Translation) ════════════════════
 
-[ROI 로드 — Method F]
-proposals[권장안].roi_calc 존재 시 → roi_calc 값 그대로 사용 (로드 불필요)
-roi_calc 없고 weekly_hours OR send_volume 존재 시 → Read("references/roi-estimation-guide.md")
+### 영문 레이블 매핑 (인라인)
+## 헤더/메타
+MS 업무 자동화 컨설팅 결과→MS Automation Consulting Report | 세션 ID→Session ID | 모드→Mode | 생성일시→Generated | 도메인→Domain | MS 지원 확인→MS Support Check
+
+## 섹션 레이블
+요구사항 요약→Requirement Summary | 업무 도메인→Business Domain | 자동화 대상→Automation Target | 현재 도구→Current Tools | 외부 시스템→External Systems | 프로세스 유형→Process Type | 제약 조건→Constraints | 운영 파라미터→Operational Params | 파싱 신뢰도→Parse Confidence
+
+## 권고 구분
+[사용자용] 권고 요약→[User] Recommendation Summary | [개발자용] 기술 상세→[Developer] Technical Details | [권장안]→[Recommended] | [검토 필요안]→[Review Required] | [비추천안]→[Not Recommended]
+
+## 솔루션 필드
+솔루션명→Solution Name | 솔루션 ID→Solution ID | 추천 이유→Reason | 구현 흐름→Implementation Flow | 준비사항→Prerequisites | 주의사항→Cautions | 적용 이유→Technical Rationale | 구현 개요→Implementation Overview | 전제조건→Prerequisites | 한계점→Limitations | 리스크 상세→Risk Details | 고려사항→Considerations
+
+## 판정
+판정→Verdict | 권장→Recommended | 검토 필요→Review Required | 비추천→Not Recommended | [미검증]→[Unverified]
+
+## 부록
+부록 A: 재컨설팅 이력→Appendix A: Revision History | 타입→Type | 이전 권고→Previous Recommendation | 새 권고→New Recommendation | 변경 이유→Change Reason | 총 재컨설팅→Total Revisions | 경량→Light | 전체→Full
+부록 B: Deep AI 비교→Appendix B: Deep AI Comparison | 실행 AI→AI Agents | 특이 제안 / 강조점→Key Proposal / Highlight | 공통 강점→Common Strengths | 공통 리스크→Common Risks | (없음)→(none) | 미실행→Not executed
+
+[ROI — Method F]
+proposals[권장안].roi_calc 값을 그대로 사용한다. (roi_calc는 ai-score-compare에서 항상 제공됨)
 
 [Excel 병렬 로드 — Method D]
-generate_excel=true 시: excel-output-schema.md를 위 로드와 동시에 Read
-(STEP 7-E에서 별도 로드 금지 — 이미 로드됨)
+generate_excel=true 시: consult STEP 7-E에서 excel-output-schema.md를 로드한다.
 ```
 
 ## STEP 2 — 파일명 결정
@@ -375,3 +393,4 @@ Deep AI : [포함 | 미포함]
 | 2026-03-11 | v1.7 | ROI 블록 조건부 출력 추가 (weekly_hours/send_volume 있을 때), STEP 6-5 CSV 이력 기록 추가 (archive/Consulting_Summary.csv 자동 append) |
 | 2026-03-11 | v1.8 | 토큰 최적화 D/E/F — D: txt+Excel JSON 병행 구성(별도 재생성 제거, ~400토큰+10~15초 절감), E: 검토필요=1줄+판정사유/비추천=솔루션명+1줄(~150~300토큰 절감), F: roi_calc 사전 수신 시 roi-estimation-guide.md 로드 생략(~200토큰 절감) |
 | 2026-03-11 | v1.9 | 헤더에 요구사항 요약 블록 추가 — 자동화 대상 / 현재 도구 / 프로세스 3필드 (제약 조건 제외) |
+| 2026-03-15 | v2.0 | 성능 최적화 — label-map.md 인라인 통합 (Read() 1회 제거), roi-estimation-guide.md 로드 제거 (roi_calc 항상 사전 제공) |
