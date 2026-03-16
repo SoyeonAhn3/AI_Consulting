@@ -137,7 +137,7 @@ n8n/
 │   ├── Phase1_기반구축.md           # ✅ 완료
 │   ├── Phase2_핵심엔진.md           # ✅ 재설계 완료
 │   ├── Phase3_산출물생성.md         # ✅ 실행 검증 완료
-│   └── Phase4_품질검증.md           # 🚧 진행 중
+│   └── Phase4_품질검증.md           # ✅ 완료
 │
 └── .claude/
     └── skills/
@@ -148,10 +148,10 @@ n8n/
         ├── parse-requirement/SKILL.md     # ✅ Phase 1 완료 v5.0 [project-specific]
         ├── ai-multi-discussion/SKILL.md   # ✅ 공통 [general]
         ├── phase-doc/SKILL.md             # ✅ 공통 [general]
-        ├── ms-solution-recommend/SKILL.md # ✅ Phase 2 완료 v3.0 [project-specific]
-        ├── ai-score-compare/SKILL.md      # ✅ Phase 2 완료 v3.3 [project-specific]
-        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v1.7 [project-specific]
-        ├── consult/SKILL.md               # ✅ Phase 3 완료 v1.6 [project-specific]
+        ├── ms-solution-recommend/SKILL.md # ✅ Phase 2 완료 v3.1 [project-specific]
+        ├── ai-score-compare/SKILL.md      # ✅ Phase 2 완료 v4.0 [project-specific]
+        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v2.0 [project-specific]
+        ├── consult/SKILL.md               # ✅ Phase 3 완료 v2.0 [project-specific]
         │   └── references/reconsult-guide.md
         ├── test-log/SKILL.md              # ✅ Phase 1 완료 [general]
         └── archive/SKILL.md               # ✅ Phase 4 완료 v1.0 [general]
@@ -338,34 +338,7 @@ session_id 형식: consult_YYYYMMDD_NNN
 | [Phase2_핵심엔진.md](./Phase/Phase2_핵심엔진.md) | ✅ 재설계 완료 | ms-solution-recommend v3.0, ai-score-compare v3.0, blocklist.md |
 | [Phase3_산출물생성.md](./Phase/Phase3_산출물생성.md) | ✅ 실행 검증 완료 | generate-output v1.2, consult v1.0 / Quick·Deep 전체 흐름 + 재컨설팅 A/B/C 분기 실행 검증 완료 |
 | [Phase4_품질검증.md](./Phase/Phase4_품질검증.md) | ✅ 완료 | 다국어/적합성 게이트/Excel/토큰최적화v2~v4/ROI 예측 완료 (#12~#24) |
-| [Phase5_PA플로우설계.md](./Phase/Phase5_PA플로우설계.md) | 🚧 진행 중 | 산출물 헤더 요구사항 요약(#25 완료), PA 플로우 설계 생성(#26 구현 예정) |
-
----
-
-## 변경 이력
-
-| 날짜 | 버전 | 내용 |
-|---|---|---|
-| 2026-03-06 | v0.1 | README 최초 작성, Phase 1 착수 (dev-log, ai-analysis, readme-update) |
-| 2026-03-06 | v0.2 | Phase 1 완료 — parse-requirement 개발 완료, Phase 구조 도입 |
-| 2026-03-06 | v0.3 | 스킬 설계 개선 — 범용/전용 분류, 공통 템플릿(skill-template) 생성, 전체 SKILL.md 표준화 |
-| 2026-03-06 | v0.4 | Phase 상세 문서 생성 (Phase/ 디렉토리), phase-doc 스킬 생성, README 완료 모듈 사용법 보완 |
-| 2026-03-06 | v0.5 | Phase 2 완료 — ms_solution_recommender.py (지식 베이스 8종), ai_score_compare.py (Quick/Deep/Fallback), SKILL.md 2개 |
-| 2026-03-09 | v0.6 | 전체 아키텍처 재설계 — Quick/Deep 모드 분리, 자유 제안 방식, 리스크 기반 평가, 재컨설팅 시스템, 세션 관리, MS 지원 확인, 공통 출력 스키마 확정 |
-| 2026-03-09 | v0.7 | 전 스킬 재설계 완료 — parse-requirement v3.0, ai-analysis v2.0, ms-solution-recommend v3.0, ai-score-compare v3.0, generate-output v1.0(신규), consult v1.0(신규) / 신규 참조 파일: reconsult-guide.md, skill-map.md |
-| 2026-03-09 | v0.8 | Python 제거 — src/ 디렉토리 전체 삭제. 모든 스킬이 SKILL.md + Reference 파일만으로 동작하도록 확정. 구현 원칙: Reference 우선, Python은 불가피한 경우만 허용 |
-| 2026-03-09 | v0.9 | 전체 테스트 실행 및 개선 — test-log 스킬 신규 생성, generate-output v1.1(요구사항 요약 섹션·출력 깊이 규칙·Quick/Deep 리스크 분기 추가), consult SKILL.md 개선(타입 C→A 전환 명시·타입 A 재출력 규칙·confirmed 추가 조건 처리), logs/ 4개 하위 폴더 분리(ai_analysis/dev/session/test), 전 스킬 경로 수정 |
-| 2026-03-10 | v1.0 | Phase 3 실행 검증 완료 — Quick 모드(재고 취합) + Deep 모드(권한 전처리) 전체 흐름 실행. generate-output v1.2(output_mode 파라미터: integrated/user/developer/split). 재컨설팅 A/B/C 분기 검증 완료(타입 C 설명응답·타입 A Rev.1 파라미터 변경·타입 B 전체재컨설팅·타입 B user_override). Codex CLI --skip-git-repo-check 버그 수정. skill references 구조화(blocklist.md → ai-score-compare/ms-solution-recommend, reconsult-guide.md → consult/references/). skill-template references 생성 가이드 추가. |
-| 2026-03-10 | v1.1 | Phase 4 착수 — 다국어 지원(영문) #12 SKILL.md 구현 완료. parse-requirement v4.0(입력 언어 자동 감지 ko/en, 이중 확인 화면, session 파일 input_language 필드). generate-output v1.3(output_language 파라미터, 영문 레이블 매핑표 45개, 파일명 _EN suffix). consult STEP 6 언어 선택 추가. ai-score-compare Deep 모드 영문 프롬프트 분기. |
-| 2026-03-10 | v1.2 | #12 이중언어(en+ko) 추가 — generate-output v1.4(_BILINGUAL suffix, 영문 본문+한국어 번역 단일 파일), consult 언어 선택 옵션 3번 추가. #16 적합성 게이트 설계 확정 — Phase 4 신규 항목, consult STEP 1-5 3단계 분기(진행 가능 자동/부분 지원 확인/지원 대상 아님 종료), v1.2 구현 예정. |
-| 2026-03-10 | v1.3 | #16 적합성 게이트 구현 완료(consult v1.2). #17 토큰 최적화 — ai-score-compare v3.2(기본 요약 출력+상세보기 트리거, -70%), consult v1.3(WebSearch Evidence Summary 압축, -95%). #18 archive 스킬 v1.0 신규(4주 보존+CSV 요약+Cold Storage 2단계 삭제). 경로 오류 수정 — dev-log/ai-analysis/parse-requirement mkdir 서브폴더 경로 수정. 범용 스킬에 archive 추가. |
-| 2026-03-11 | v1.4 | #19 Excel 보고서 생성 — KR/EN 2시트 템플릿(컨설팅결과_보고서_템플릿.xlsx), fill_excel_template.py(플레이스홀더 채우기·이탤릭 제거·행높이 자동조정·revision 동적 행 추가), consult STEP 6 Excel 질문 + STEP 7-E, output_language 연동(ko→KR시트 / en→EN시트 / en+ko→둘 다). consult v1.4, generate-output v1.5 |
-| 2026-03-11 | v1.5 | #20 토큰 최적화 v2 — Reference 분리 6종(excel-output-schema/deep-mode-guide/phase-template/label-map/reconsult-guide/risk-evaluation-guide), consult/generate-output SKILL.md ~50% 압축, CLAUDE.md 중복 제거(-600토큰/턴), JSON 빈 필드 skip(fill_excel_template.py regex 치환). #21 MS 제품 카탈로그 확장 — Forms/Planner/AI Builder solutions.md 추가(#13~15), ms-product-catalog.md 신규(STEP 0 항상 로드 Quick/Deep 공통). ai-score-compare v3.3, consult v1.5 |
-| 2026-03-11 | v1.6 | #22 토큰 최적화 v3 (UX 간소화) — generate-output v1.6 헤더 단순화(요구사항 요약 섹션 제거), consult v1.6 STEP 3 요구사항 1줄 요약 규칙 추가, ai-score-compare v3.3 채점표·리스크표·분석 중간 표 출력 금지. 추가 ~1,350 토큰 절감 (~27%) |
-| 2026-03-11 | v1.7 | #23 ROI 예측 — roi-estimation-guide.md 신규(도메인별 기준값+시나리오+단위변환), parse-requirement v5.0(Q4 소요시간 수집, 다단위 파싱 일/주/월/년), generate-output v1.7(ROI 블록 조건부 출력, 3시나리오 모드), excel-output-schema.md ROI 9필드, Excel KR/EN 시트 ROI 섹션(Section 5) |
-| 2026-03-11 | v1.8 | #24 토큰 최적화 v4 — label-map.md 58줄→18줄(#1), ai-score-compare 중복 리스크표+blocklist블록 제거(#3), parse-requirement STEP1-5+STEP2 표 압축(#5), 합계 ~800토큰 SKILL.md 절감. consult v1.7 컨텍스트 압축 A/B/C 추가(~800~1,600토큰/사이클). archive/Consulting_Summary.csv 고정 파일명 확정(generate-output+archive 경로 동기화). excel-output-schema ROI_SCENARIO_LOW/MID/HIGH 제거(6필드로 정리) |
-| 2026-03-11 | v1.9 | Phase 5 착수 — #25 산출물 헤더 요구사항 요약 블록 ✅ 완료(generate-output v1.9, 자동화 대상/현재 도구/프로세스 3필드). #26 PA 플로우 설계 생성 설계 확정(consult STEP 7-P 신규, output/PA_Flow/.txt + logs/PA_log/.json, pa-flow-prompt-guide.md 신규 예정, ~1,800토큰/실행). Phase 4 완료 처리 |
-| 2026-03-11 | v2.0 | Phase 5 완료 — #26 PA 플로우 설계 생성 ✅ 구현 완료. consult v1.8(STEP 7-P: 4섹션 구성+예외처리 체크리스트), pa-flow-prompt-guide.md(트리거 8종/커넥터표/복잡도/예외처리 패턴/예시 3종), 산출물 생성일시 날짜만 표기(generate-output v1.9 / consult STEP 7-P). Phase 5 완료 처리 |
+| [Phase5_PA플로우설계.md](./Phase/Phase5_PA플로우설계.md) | ✅ 완료 | #25 산출물 헤더 요구사항 요약, #26 PA 플로우 설계 생성 완료 |
 
 ---
 
