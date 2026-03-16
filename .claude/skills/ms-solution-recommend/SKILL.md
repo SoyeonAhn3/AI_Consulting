@@ -1,6 +1,6 @@
 ---
 name: ms-solution-recommend
-version: 3.0
+version: 3.1
 description: Deep 모드에서 solutions.md의 검증된 라이선스/구현난이도 데이터를 AI 3종에게 참고 컨텍스트로 제공한다. 솔루션을 추천하거나 제한하지 않으며, AI가 자유 제안 후 참고할 수 있도록 데이터만 공급한다. Deep 모드 실행 시 ai-score-compare가 내부적으로 호출한다.
 depends_on:
   - parse-requirement
@@ -16,6 +16,7 @@ produces:
 ParsedRequirement를 받아 solutions.md의 검증된 데이터와 blocklist.md의 차단 목록을
 AI 3종 프롬프트에 포함할 컨텍스트로 준비한다.
 솔루션을 선별하거나 점수를 매기지 않으며, AI의 자유 제안을 제한하지 않는다.
+blocklist_context를 ai-score-compare에서 수신하여 사용한다.
 
 ---
 
@@ -37,15 +38,15 @@ AI 3종 프롬프트에 포함할 컨텍스트로 준비한다.
 
 ---
 
-## STEP 1 — blocklist.md 로드
+## STEP 1 — blocklist_context 수신
 
+ai-score-compare에서 전달받은 `blocklist_context`를 사용한다.
+(별도 Read("references/blocklist.md") 불필요 — 중복 로드 방지)
+
+blocklist_context가 미전달된 경우에만 fallback:
 ```
 Read("references/blocklist.md")
 ```
-
-차단 목록 추출:
-- B001 (deprecated) / B002 (정책 불가) / B003 (운영 문제) 전체 항목
-- 제품명 목록으로 정리 → `blocklist_context`로 반환
 
 ---
 
@@ -128,7 +129,7 @@ AI 3종 프롬프트에 포함할 `solutions_context`를 구성한다.
 | 실패 유형 | 처리 방법 |
 |---|---|
 | solutions.md 로드 실패 | 경고 표시 후 solutions_context 없이 진행 (AI 자유 제안만으로 처리) |
-| blocklist.md 로드 실패 | 경고 표시 후 blocklist_context 없이 진행 + "차단 목록 확인 불가" 안내 |
+| blocklist_context 미수신 + blocklist.md 로드 실패 | 경고 표시 후 blocklist_context 없이 진행 + "차단 목록 확인 불가" 안내 |
 | 모든 솔루션 deprecated | "solutions.md 업데이트 필요" 안내 후 빈 solutions_context 반환 |
 
 ---
@@ -140,3 +141,11 @@ AI 3종 프롬프트에 포함할 `solutions_context`를 구성한다.
 - 프롬프트 순서: 요구사항/자유 제안 먼저 → solutions.md 참고 나중
 - solutions.md에 없는 솔루션을 AI가 제안하면 [미검증] 태그 표시 후 MS 지원 확인 단계에서 보완
 - verified_date 업데이트는 solutions.md 직접 수정 (6개월 주기 권장)
+
+---
+
+## 변경 이력
+
+| 날짜 | 버전 | 내용 |
+|---|---|---|
+| 2026-03-15 | v3.1 | 성능 최적화 — blocklist_context를 ai-score-compare에서 파라미터로 수신 (중복 Read() 제거) |
