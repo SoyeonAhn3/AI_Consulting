@@ -87,13 +87,13 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 
 ---
 
-### Phase 5 — PAD 플로우 설계 생성 `[완료]`
-> Power Automate Desktop 권고안 확정 시 즉시 활용 가능한 플로우 설계 산출물 자동 생성
+### Phase 5 — PA 플로우 설계 생성 `[완료]`
+> Power Automate 권고안 확정 시 즉시 활용 가능한 플로우 설계 산출물 자동 생성
 
 | # | Skill / 모듈 | 상태 | 설명 |
 |---|---|---|---|
 | 25 | 산출물 헤더 요구사항 요약 블록 추가 | ✅ 구현 완료 | generate-output v1.9: 공통 헤더에 자동화 대상/현재 도구/프로세스 3필드 (제약 조건 제외). 생성일시 날짜만 표기 |
-| 26 | PAD 플로우 설계 생성 | ✅ v2.0 완료 → v2.1 개편 | consult STEP 7-P: PAD(Power Automate Desktop 3.x) 단일 경로. 4섹션(다이어그램/PAD 수동 단계별 설정 가이드/구현 포인트/예외 처리). Blueprint JSON PAD 전용(flow_type/pad_version/scheduling/subflows). pad-action-guide.md 신규(PAD 3.x 액션명/카테고리 참조). pa-flow-prompt-guide.md → Cloud Flow 전용 참조 데이터로 개편. Cloud Flow 지원 추후 예정 |
+| 26 | PA 플로우 설계 생성 | ✅ 구현 완료 | consult STEP 7-P: 플로우 다이어그램+Copilot 프롬프트+수동 구현 포인트+예외 처리 체크리스트. output/PA_Flow/.txt + logs/PA_log/.json(Blueprint). pa-flow-prompt-guide.md 신규. ~1,800토큰/실행 |
 
 ---
 
@@ -127,14 +127,7 @@ n8n/
 │   ├── parsing-guide.md            # 도메인 분류 기준 / 신뢰도 공식
 │   ├── schema.md                   # ai-analysis / dev-log 이벤트 스키마
 │   ├── reconsult-guide.md          # 재컨설팅 A/B/C 타입 판정 기준 + 경계 케이스 예시
-│   ├── skill-map.md                # 스킬 연동 관계 / 트리거 / Reference 사용 관계
-│   ├── pa-flow-prompt-guide.md     # Cloud Flow 트리거/액션 공식명 참조 데이터
-│   └── pad-action-guide.md         # PAD 3.x 액션명/카테고리/예외 패턴 참조 데이터 (신규)
-│
-├── excel_automation/               # Excel 자동화 모듈 (신규)
-│   ├── config.py
-│   ├── monthly_report.py
-│   └── README.md
+│   └── skill-map.md                # 스킬 연동 관계 / 트리거 / Reference 사용 관계
 │
 ├── Word_Template/                  # Excel 보고서 생성 (#19)
 │   ├── 컨설팅결과_보고서_템플릿.xlsx  # KR + EN 2시트 템플릿 ({{PLACEHOLDER}} 형식)
@@ -345,7 +338,7 @@ session_id 형식: consult_YYYYMMDD_NNN
 | [Phase2_핵심엔진.md](./Phase/Phase2_핵심엔진.md) | ✅ 재설계 완료 | ms-solution-recommend v3.0, ai-score-compare v3.0, blocklist.md |
 | [Phase3_산출물생성.md](./Phase/Phase3_산출물생성.md) | ✅ 실행 검증 완료 | generate-output v1.2, consult v1.0 / Quick·Deep 전체 흐름 + 재컨설팅 A/B/C 분기 실행 검증 완료 |
 | [Phase4_품질검증.md](./Phase/Phase4_품질검증.md) | ✅ 완료 | 다국어/적합성 게이트/Excel/토큰최적화v2~v4/ROI 예측 완료 (#12~#24) |
-| [Phase5_PA플로우설계.md](./Phase/Phase5_PA플로우설계.md) | ✅ 완료 | #25 산출물 헤더 요구사항 요약, #26 PAD 플로우 설계 생성 v2.1(PAD 전용 경로 확립) |
+| [Phase5_PA플로우설계.md](./Phase/Phase5_PA플로우설계.md) | 🚧 진행 중 | 산출물 헤더 요구사항 요약(#25 완료), PA 플로우 설계 생성(#26 구현 예정) |
 
 ---
 
@@ -373,7 +366,6 @@ session_id 형식: consult_YYYYMMDD_NNN
 | 2026-03-11 | v1.8 | #24 토큰 최적화 v4 — label-map.md 58줄→18줄(#1), ai-score-compare 중복 리스크표+blocklist블록 제거(#3), parse-requirement STEP1-5+STEP2 표 압축(#5), 합계 ~800토큰 SKILL.md 절감. consult v1.7 컨텍스트 압축 A/B/C 추가(~800~1,600토큰/사이클). archive/Consulting_Summary.csv 고정 파일명 확정(generate-output+archive 경로 동기화). excel-output-schema ROI_SCENARIO_LOW/MID/HIGH 제거(6필드로 정리) |
 | 2026-03-11 | v1.9 | Phase 5 착수 — #25 산출물 헤더 요구사항 요약 블록 ✅ 완료(generate-output v1.9, 자동화 대상/현재 도구/프로세스 3필드). #26 PA 플로우 설계 생성 설계 확정(consult STEP 7-P 신규, output/PA_Flow/.txt + logs/PA_log/.json, pa-flow-prompt-guide.md 신규 예정, ~1,800토큰/실행). Phase 4 완료 처리 |
 | 2026-03-11 | v2.0 | Phase 5 완료 — #26 PA 플로우 설계 생성 ✅ 구현 완료. consult v1.8(STEP 7-P: 4섹션 구성+예외처리 체크리스트), pa-flow-prompt-guide.md(트리거 8종/커넥터표/복잡도/예외처리 패턴/예시 3종), 산출물 생성일시 날짜만 표기(generate-output v1.9 / consult STEP 7-P). Phase 5 완료 처리 |
-| 2026-03-13 | v2.1 | Phase 5 #26 PAD 전환 개편 — STEP 7-P PA→PAD(Power Automate Desktop 3.x) 단일 경로 확립. Copilot 프롬프트 제거 → PAD 수동 단계별 설정 가이드(A~D)로 교체. Blueprint JSON PAD 전용 구조(flow_type/pad_version/scheduling/subflows). Cloud Flow 지원 추후 예정 명시. pad-action-guide.md 신규(PAD 3.x 액션명/카테고리). pa-flow-prompt-guide.md Cloud Flow 전용 참조 데이터로 개편. excel_automation/ 디렉터리 신규 추가(config.py/monthly_report.py) |
 
 ---
 

@@ -2,6 +2,8 @@
 name: consult
 version: 2.0
 description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅" 등의 요청 시 트리거한다.
+version: 1.6
+description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅", "어떻게 자동화할 수 있어", "어떻게 자동화 할 지 알려줘", "자동화하고 싶어", "자동으로 하고 싶어", "업무를 자동화", "~를 자동화", "자동화 가능해?", "어떻게 하면 자동화", "업무 효율화", "반복 업무 줄이고 싶어", "자동으로 처리하고 싶어" 등 업무 자동화 관련 요청 시 트리거한다.
 depends_on:
   - parse-requirement
   - ai-score-compare
@@ -227,17 +229,16 @@ MS 지원 확인: [confirmed | changed | deprecated]
 
 Excel 언어: output_language 그대로 적용 (ko→KR시트만 / en→EN시트만 / en+ko→둘 다)
 
-**④ PAD 플로우 설계 생성 여부** ← solution_id에 "PowerAutomate" 포함 시만 표시
+**④ PA 플로우 설계 생성 여부** ← solution_id에 "PowerAutomate" 포함 시만 표시
 ```
 [ko] PowerAutomate가 권고안에 포함되어 있습니다.
-     Power Automate Desktop(PAD) 플로우 설계 산출물을 생성할까요?
-     1.아니오 (기본)  2.예 — 플로우 다이어그램 + PAD 수동 단계별 설정 가이드 + Blueprint JSON
+     PA 플로우 설계 산출물을 생성할까요?
+     1.아니오 (기본)  2.예 — 플로우 다이어그램 + Copilot 프롬프트 + Blueprint JSON 생성
 [en] PowerAutomate is included in the recommendation.
-     Would you like to generate a PAD (Power Automate Desktop) flow design?
-     1.No (default)  2.Yes — Flow diagram + PAD step-by-step setup guide + Blueprint JSON
+     Would you like to generate a PA flow design?
+     1.No (default)  2.Yes
 ```
 매핑: 1/생략 또는 PowerAutomate 미포함→generate_pa_flow=false / 2→generate_pa_flow=true
-※ Cloud Flow 지원은 추후 필요 시 추가 예정 (현재 PAD 단일 경로)
 
 ---
 
@@ -271,9 +272,7 @@ Read("references/excel-output-schema.md")
 
 generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
 
-### STEP 7-P — PAD 플로우 설계 생성
-
-※ 현재 PAD(Power Automate Desktop 3.x) 단일 경로. Cloud Flow 지원은 추후 추가 예정.
+### STEP 7-P — PA 플로우 설계 생성
 
 ```
 조건: generate_pa_flow=true
@@ -282,63 +281,39 @@ generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
     output/PA_Flow/ 없으면 Bash: mkdir -p "output/PA_Flow"
     logs/PA_log/    없으면 Bash: mkdir -p "logs/PA_log"
 
-[2] Read("references/pad-action-guide.md")
-    → PAD 3.x 액션명/카테고리/예외 패턴 참조 데이터 로드 (생성 템플릿 아님)
+[2] Read("references/pa-flow-prompt-guide.md")
 
-[3] 아래 4개 섹션으로 PA_Flow.txt 구성 (consult 컨텍스트 재사용):
+[3] 아래 3개 섹션으로 PA_Flow.txt 구성 (consult 컨텍스트 재사용):
     입력: solution_id / implementation[] / automation_targets / prerequisites / output_language
 
     섹션 1 — 플로우 다이어그램 (ASCII)
-      Main 플로우 → 서브플로우 → 액션 순서로 시각화
-      SAP/MES 조작 포함 시 애플리케이션 실행 → 화면 대기 → 입력/읽기 흐름으로 표현
+      트리거 → 조건 → 액션 순서로 시각화
       조건 분기가 없으면 선형 흐름으로 표현
 
-    섹션 2 — PAD 수동 단계별 설정 가이드
-      ※ 가이드 파일은 액션명 조회용으로만 사용. 단계는 implementation[]을 분석해 직접 구성할 것.
+    섹션 2 — PA Copilot 프롬프트
+      pa-flow-prompt-guide.md 패턴 기반 자연어 생성
+      환경 종속 값은 [플레이스홀더] 형식으로 표기
+      output_language=en 시 영문으로만 생성
 
-      A. 플로우 구조 결정
-         implementation[] 분석 → Main + 서브플로우 분리 여부 판단
-         (액션 10개 초과 또는 논리 단위 구분 명확 시 서브플로우 분리 권장)
-         스케줄 실행 필요 시: Windows 작업 스케줄러 등록 방법 안내
-
-      B. PAD Designer 시작 경로 명시
-         "Power Automate Desktop 실행 → 새 흐름 → 흐름 이름 입력 → 만들기"
-
-      C. implementation[] 순서대로 각 액션을 단계로 변환
-         - 가이드의 액션 카테고리 테이블에서 공식 액션명 확인
-         - "왼쪽 액션 패널 → [카테고리] → [액션명] 더블클릭 또는 캔버스로 드래그" 형식으로 작성
-         - 각 설정값을 automation_targets와 implementation[] 내용에 맞게 구체화
-         - SAP/MES 화면 조작: 가이드의 SAP GUI / MES 연동 패턴 참조
-         - 조건 분기: Conditionals → If / Else / End
-         - 반복 처리: Loops → For each (리스트) 또는 Loop condition
-         - 변수: Variables → Set variable (이전 액션 출력값 저장)
-
-      D. 환경 종속 값 처리
-         파일 경로, 서버 주소, 계정 정보 등은 [플레이스홀더] 형식으로 표기
-         output_language=en 시 전체 영문으로 생성
-
-    섹션 3 — 구현 포인트
-      사용 액션 카테고리 목록 및 PAD 라이선스 요건
-      핵심 액션 설정 팁 (애플리케이션 실행 → 화면 대기 → 입력/읽기 순)
-      스케줄링: Windows 작업 스케줄러 등록 방법
+    섹션 3 — 수동 구현 포인트
+      필요 커넥터 목록 (공식 명칭 + 라이선스 등급)
+      핵심 액션 설정 팁 (트리거→조건→액션 순)
+      라이선스 등급 (Standard / Premium 명시)
       사용자 설정 체크리스트 [ ] 형식
 
     섹션 4 — 예외 처리 체크리스트
-      가이드의 예외 처리 패턴 중 이 플로우에 해당하는 항목만 선별
-      (SAP 없으면 SAP 세션 오류 항목 제외, 반복 없으면 부분 실패 항목 제외 등)
-      [ ] 형식으로 출력
+      pa-flow-prompt-guide.md 예외 처리 패턴 기반
+      발송 실패 / 빈값 / 중복 실행 / 인증 만료 항목 생성
+      플로우 특성에 맞는 항목만 선별하여 [ ] 형식으로 출력
 
 [4] Blueprint JSON 구성
     {
       "session_id": "[session_id]",
       "flow_name": "[solution_name]",
-      "flow_type": "PAD",
-      "pad_version": "3.x",
-      "scheduling": "Windows Task Scheduler | 수동 실행",
-      "main_flow": ["subflow_name_1", "subflow_name_2"],
-      "subflows": [{ "name": "...", "actions": [{ "step": N, "action": "...", "category": "...", "params": {} }] }],
-      "error_handling": "On block error",
-      "license_required": "Power Automate Desktop (Windows 포함 무료 | 유인/무인 RPA 라이선스)"
+      "trigger": { "type": "...", "connector": "...", "filter": {} },
+      "actions": [{ "step": N, "type": "...", "connector": "...", "params": {} }],
+      "connectors_required": [...],
+      "license_tier": "Standard | Premium"
     }
 
 [5] 파일 저장

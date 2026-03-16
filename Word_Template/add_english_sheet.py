@@ -2,11 +2,12 @@
 영문 시트를 기존 Excel 템플릿에 추가하는 스크립트
 실행: py add_english_sheet.py
 """
+import os
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-FILE_PATH = "C:/Users/sy.ahn/OneDrive - Bosch Group/AI Development/AI_Consulting/Word_Template/컨설팅결과_보고서_템플릿.xlsx"
+FILE_PATH = os.path.join(os.path.dirname(__file__), "컨설팅결과_보고서_템플릿.xlsx")
 EN_SHEET  = "Consulting Report (EN)"
 
 # ── Color palette (same as KR sheet) ────────────────────────
