@@ -101,7 +101,7 @@ Read(".claude/skills/gen-manual/references/sections-guide.md")
 - 상단 DATA 섹션에 모든 내용 변수 정의
 - `LANG` 변수 설정: `"ko"` (기본) 또는 `"en"` (영어 요청 시)
 - LANG이 `"en"`이면 모든 DATA 텍스트를 영어로 작성
-- 색상 상수는 template-code.py의 COLOR_* 그대로 사용 (Bosch 계열)
+- 색상 상수는 template-code.py의 COLOR_* 그대로 사용
 - I18N 딕셔너리와 `t()` 함수는 template-code.py에서 그대로 사용
 - 섹션 수에 맞게 목차 항목 동적 생성
 - 출력 경로: `{프로젝트_루트}/manuals/YYYYMMDD_프로그램명_매뉴얼.docx` (한국어)

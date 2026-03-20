@@ -1,9 +1,8 @@
 ---
 name: consult
 version: 2.0
-description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅" 등의 요청 시 트리거한다.
-version: 1.6
 description: MS 업무 자동화 컨설팅 전체 흐름을 오케스트레이션한다. parse-requirement → 적합성 게이트 → 모드 선택 → ai-score-compare → 사용자 피드백 → 재컨설팅(A/B/C) → MS 지원 확인 → generate-output 순서로 실행한다. "컨설팅 시작해줘", "자동화 방법 알려줘", "업무 자동화 컨설팅", "어떻게 자동화할 수 있어", "어떻게 자동화 할 지 알려줘", "자동화하고 싶어", "자동으로 하고 싶어", "업무를 자동화", "~를 자동화", "자동화 가능해?", "어떻게 하면 자동화", "업무 효율화", "반복 업무 줄이고 싶어", "자동으로 처리하고 싶어" 등 업무 자동화 관련 요청 시 트리거한다.
+
 depends_on:
   - parse-requirement
   - ai-score-compare
@@ -198,38 +197,79 @@ MS 지원 확인: [confirmed | changed | deprecated]
 
 아니오 → STEP 4 복귀
 
-예 → 순서대로 선택:
+예 → **STEP 6-A: solution_id 확인** (분기 결정)
 
-**① output_mode 선택** (기본: 통합본)
+### STEP 6-A — PowerAutomate 포함 여부 확인
+
+```
+if "PowerAutomate" in solution_id:
+  BRANCH = "with_pa"     # ① ② ③ ④ 모두 표시
+else:
+  BRANCH = "without_pa"  # ① ② ③만 표시, ④ 스킵
+```
+
+초기값:
+```
+output_mode = null
+output_language = null
+generate_excel = false        (기본값)
+generate_pa_flow = false      (기본값, ④ 미표시 시 유지)
+```
+
+---
+
+### STEP 6-1 — output_mode 선택 (필수)
+
 ```
 1. 통합본     — 사용자 요약 + 개발자 상세 (기본)
 2. 사용자용   — 비기술 요약만
 3. 개발자용   — 기술 상세만
 4. 분리본     — 사용자용 + 개발자용 파일 2개
 ```
-매핑: 1/생략→integrated / 2→user / 3→developer / 4→split
 
-**② output_language 선택**
+**매핑**:
+- 1 또는 생략 → `output_mode = "integrated"`
+- 2 → `output_mode = "user"`
+- 3 → `output_mode = "developer"`
+- 4 → `output_mode = "split"`
+
+---
+
+### STEP 6-2 — output_language 선택 (필수)
 
 | input_language | 선택지 | 매핑 |
 |---|---|---|
 | ko | 1.한국어(기본) / 2.English / 3.English+한국어 | ko / en / en+ko |
 | en | 1.English(default) / 2.한국어 / 3.English+Korean | en / ko / en+ko |
 
-세션 저장: `{"output_language": "ko"|"en"|"en+ko"}`
+**저장**: `session_state["output_language"] = [user_selection]`
 
-**③ Excel 생성 여부**
+---
+
+### STEP 6-3 — Excel 생성 여부 (선택)
+
 ```
 [ko] Excel 보고서(.xlsx)도 함께 생성할까요?
      1.아니오 — .txt만 생성 (기본)  2.예 — .txt + .xlsx 함께 생성
 [en] Would you also like to generate an Excel report (.xlsx)?
      1.No (default)  2.Yes
 ```
-매핑: 1/생략→generate_excel=false / 2→generate_excel=true
 
-Excel 언어: output_language 그대로 적용 (ko→KR시트만 / en→EN시트만 / en+ko→둘 다)
+**매핑**:
+- 1 또는 생략 → `generate_excel = false`
+- 2 → `generate_excel = true`
 
-**④ PA 플로우 설계 생성 여부** ← solution_id에 "PowerAutomate" 포함 시만 표시
+**Excel 언어**: output_language 그대로 적용
+- ko → KR시트만
+- en → EN시트만
+- en+ko → 둘 다
+
+---
+
+### STEP 6-4 — PA 플로우 설계 생성 여부 (조건부 선택)
+
+**조건 분기**: BRANCH == "with_pa"인 경우에만 표시
+
 ```
 [ko] PowerAutomate가 권고안에 포함되어 있습니다.
      PA 플로우 설계 산출물을 생성할까요?
@@ -238,14 +278,33 @@ Excel 언어: output_language 그대로 적용 (ko→KR시트만 / en→EN시트
      Would you like to generate a PA flow design?
      1.No (default)  2.Yes
 ```
-매핑: 1/생략 또는 PowerAutomate 미포함→generate_pa_flow=false / 2→generate_pa_flow=true
+
+**매핑**:
+- 1 또는 생략 → `generate_pa_flow = false`
+- 2 → `generate_pa_flow = true`
+
+**BRANCH == "without_pa"인 경우**: 이 질문 표시 안 함, `generate_pa_flow = false` 자동 설정
+
+---
+
+### STEP 6 최종 확인 (generate-output 전달 전)
+
+**반드시 확인할 값들:**
+```
+✓ output_mode     : [integrated|user|developer|split]
+✓ output_language : [ko|en|en+ko]
+✓ generate_excel  : [true|false]
+✓ generate_pa_flow: [true|false] (STEP 6-4 결과)
+```
+
+모든 값이 설정되어야 STEP 7 진행.
 
 ---
 
 ## STEP 7 — generate-output 실행
 
 ```
-generate-output 호출 (최소 필드 전달):
+generate-output 호출 (필수 필드):
 
   session_id       : [session_id]
   mode             : [mode]
@@ -257,56 +316,81 @@ generate-output 호출 (최소 필드 전달):
   ms_verify_result : Evidence Summary만 (WebSearch 원문 제외)
   deep_meta        : common_strengths / common_risks / orchestrator_review 만 전달
                      (ai_proposals 각 AI 전체 제안 내용 제외)
-  output_mode      : [output_mode]
-  output_language  : [output_language]
+  output_mode      : [output_mode]       ← STEP 6-1 결과
+  output_language  : [output_language]   ← STEP 6-2 결과
+  generate_excel   : [generate_excel]    ← STEP 6-3 결과
 ```
 
-generate-output 완료 후, **generate_excel=true인 경우** 추가 실행:
+**STEP 6-4 결과 처리**:
+- generate_pa_flow 값은 generate-output 호출에 포함하지 않음 (generate-output은 .txt/.xlsx만 생성)
+- generate_pa_flow=true인 경우만 아래 STEP 7-P 실행
 
-### STEP 7-E — Excel 보고서 생성
+---
+
+## STEP 7-E / STEP 7-P — 선택적 산출물 생성
+
+generate-output 완료 후 아래 조건에 따라 추가 실행:
+
+### STEP 7-E — Excel 보고서 생성 ← **generate_excel=true인 경우만 실행**
 
 ```
 Read("references/excel-output-schema.md")
 ```
 (파일명 규칙, JSON 플레이스홀더 전체 목록, 저장·호출·실패처리 포함)
 
-generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
+---
 
-### STEP 7-P — PA 플로우 설계 생성
+### STEP 7-P — PA 플로우 설계 생성 ← **generate_pa_flow=true인 경우만 실행**
 
 ```
-조건: generate_pa_flow=true
+조건: generate_pa_flow=true (STEP 6-4 사용자 선택 결과)
 
 [1] 디렉토리 확인
     output/PA_Flow/ 없으면 Bash: mkdir -p "output/PA_Flow"
     logs/PA_log/    없으면 Bash: mkdir -p "logs/PA_log"
 
-[2] Read("references/pa-flow-prompt-guide.md")
-
-[3] 아래 3개 섹션으로 PA_Flow.txt 구성 (consult 컨텍스트 재사용):
+[2] 아래 4개 섹션으로 PA_Flow.txt 구성 (consult 컨텍스트 재사용):
     입력: solution_id / implementation[] / automation_targets / prerequisites / output_language
 
+    **출력 원칙**: Copilot 프롬프트·AI 생성 방식 안내 금지.
+    개발자가 PA 포털(make.powerautomate.com)을 처음 열어도 순서대로 따라할 수 있는
+    Step-by-step UI 설정 매뉴얼만 작성한다.
+
     섹션 1 — 플로우 다이어그램 (ASCII)
-      트리거 → 조건 → 액션 순서로 시각화
-      조건 분기가 없으면 선형 흐름으로 표현
+      트리거 → 서브플로우(또는 액션 그룹) → 조건 → 액션 순서로 시각화
+      역할별로 서브플로우/스코프로 구조화하여 표현
+      조건 분기(성공/실패)가 있으면 분기선(├─/└─)으로 명시
 
-    섹션 2 — PA Copilot 프롬프트
-      pa-flow-prompt-guide.md 패턴 기반 자연어 생성
-      환경 종속 값은 [플레이스홀더] 형식으로 표기
-      output_language=en 시 영문으로만 생성
+    섹션 2 — 사전 준비
+      make.powerautomate.com 접속 및 로그인 확인
+      필요 커넥터 목록 (공식 명칭 + 라이선스 등급 Standard/Premium)
+      커넥터 연결(계정 인증) 방법: 커넥터 탭 → [커넥터명] → 연결 추가 → 계정 선택
+      Office Scripts 사용 시: IT 관리자 활성화 선행 항목 명시
 
-    섹션 3 — 수동 구현 포인트
-      필요 커넥터 목록 (공식 명칭 + 라이선스 등급)
-      핵심 액션 설정 팁 (트리거→조건→액션 순)
-      라이선스 등급 (Standard / Premium 명시)
-      사용자 설정 체크리스트 [ ] 형식
+    섹션 3 — 단계별 설정 가이드 (Step-by-step)
+      규칙:
+        - "Step N. [메뉴/탭 위치] → [클릭할 항목] → [입력값]" 형식 엄수
+        - 각 Step은 1개 액션만 기술 (복합 동작 분리)
+        - 동적 콘텐츠 참조 시 변수명 명시 (예: %CurrentFile['Id']%)
+        - 환경 종속 값은 [플레이스홀더] 형식으로 표기
+        - 역할 단위로 서브플로우/스코프 구분선 삽입
+      구성 순서:
+        ① 플로우 생성 (이름·트리거 설정)
+        ② 커넥터별 액션 추가 (트리거 → 데이터 조회 → 핵심 처리 → 알림 순)
+        ③ 조건 분기 설정 (성공/실패 경로 각각)
+        ④ 변수 설정 및 동적 콘텐츠 매핑
+        ⑤ 저장 및 테스트 실행
 
-    섹션 4 — 예외 처리 체크리스트
-      pa-flow-prompt-guide.md 예외 처리 패턴 기반
-      발송 실패 / 빈값 / 중복 실행 / 인증 만료 항목 생성
-      플로우 특성에 맞는 항목만 선별하여 [ ] 형식으로 출력
+    섹션 4 — 예외 처리 설정 가이드
+      오류 유형별로 PA에서 실제 설정하는 방법을 Step 형식으로 기술:
+        - 스크립트/액션 실패 시: Scope + Configure run after 설정 방법
+        - 빈값/0건 처리: Condition 액션 설정 방법
+        - 중복 실행 방지: 조건 컬럼 확인 로직 설정
+        - 인증 만료: 커넥터 재연결 방법
+        - 실패 항목 누적 알림: 변수 초기화 → append → 완료 후 알림 설정
+      각 항목은 체크리스트 [ ] 형식으로 출력
 
-[4] Blueprint JSON 구성
+[3] Blueprint JSON 구성
     {
       "session_id": "[session_id]",
       "flow_name": "[solution_name]",
@@ -316,7 +400,7 @@ generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
       "license_tier": "Standard | Premium"
     }
 
-[5] 파일 저장
+[4] 파일 저장
     Write: output/PA_Flow/[YYYYMMDD]_[session_id]_PA_Flow.txt
     Write: logs/PA_log/[YYYYMMDD]_[session_id]_PA_Flow.json
 ```
@@ -327,20 +411,26 @@ generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
 
 ## STEP 8 — 완료 보고
 
+**반드시 확인 사항:**
+- output_mode, output_language, generate_excel, generate_pa_flow 모두 설정됨
+- generate-output 완료 여부 (STEP 7)
+- generate_excel=true인 경우 STEP 7-E 완료 여부
+- generate_pa_flow=true인 경우 STEP 7-P 완료 여부
+
 ```
 컨설팅 완료
 
-세션 ID  : [session_id]
-산출물   : output/[파일명].txt
-         [generate_excel=true]   output/[파일명].xlsx
-         [generate_pa_flow=true] output/PA_Flow/[날짜]_[session_id]_PA_Flow.txt
-                                 logs/PA_log/[날짜]_[session_id]_PA_Flow.json
-출력     : [통합본|사용자용|개발자용|분리본]
-언어     : [한국어|English|English+한국어]
-모드     : [Quick|Deep]
-최종 권고: [솔루션명]
-재컨설팅 : [N회]
-총 소요  : 세션 시작 ~ 완료
+세션 ID      : [session_id]
+산출물 (필수)  : output/[파일명].txt
+산출물 (선택)  :
+  ✓ generate_excel=true   : output/[파일명].xlsx
+  ✓ generate_pa_flow=true : output/PA_Flow/[날짜]_[session_id]_PA_Flow.txt
+                           logs/PA_log/[날짜]_[session_id]_PA_Flow.json
+출력 형식   : [통합본|사용자용|개발자용|분리본]
+언어       : [한국어|English|English+한국어]
+모드       : [Quick|Deep]
+최종 권고   : [솔루션명]
+재컨설팅    : [N회]
 
 추가 컨설팅이 필요하면 언제든 말씀해주세요.
 ```
@@ -364,9 +454,25 @@ generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
 | scope_gate | "proceed" | proceed \| partial \| rejected |
 | scope_limited | false | 범위 제한 여부 |
 | scope_exclusions | "" | 제외 범위 요약 |
+| context_snapshot | null | 대화 복원용 컨텍스트 스냅샷 (아래 참조) |
 | created_at / updated_at | ISO 8601 | created_at은 최초 1회만 |
 
-**즉시 저장 시점**: 재컨설팅 카운터 변경 / 모드 전환 / ms_verify_retry_count 변경 / solution_id_current 변경 / scope_gate 판정 완료
+### context_snapshot 구조
+
+대화 단절 시 최소한의 맥락 복원을 위해 아래 시점에 스냅샷을 저장한다.
+
+```json
+"context_snapshot": {
+  "requirement_summary": "domain / automation_targets 핵심 1줄 / current_tools",
+  "selected_proposal": "솔루션명 + solution_id (권고안 선택 시)",
+  "last_step": "STEP N",
+  "last_feedback": "사용자 마지막 피드백 1줄 요약 (재컨설팅 시)"
+}
+```
+
+**저장 시점**: STEP 1 완료(requirement_summary) / STEP 4 선택 확정(selected_proposal) / 재컨설팅 시(last_feedback) / 매 STEP 전환(last_step)
+
+**즉시 저장 시점**: 재컨설팅 카운터 변경 / 모드 전환 / ms_verify_retry_count 변경 / solution_id_current 변경 / scope_gate 판정 완료 / context_snapshot 갱신
 
 ---
 
@@ -419,3 +525,5 @@ generate-output 완료 후, **generate_pa_flow=true인 경우** 추가 실행:
 | 2026-03-11 | v1.6 | 컨설팅 결과 컨텍스트 압축 3종 — A:비선택 안 즉시 축약(STEP 4), B:generate-output 최소 필드 전달(STEP 7), C:WebSearch 원문 드랍(STEP 5) (~800~1,600 토큰/사이클 절감) |
 | 2026-03-11 | v1.8 | Phase 5 #26 PA 플로우 설계 생성 구현 — STEP 6 ④ PA 생성 여부 확인(PowerAutomate 포함 시만), STEP 7-P 신규(pa-flow-prompt-guide.md 로드, ASCII 다이어그램+Copilot 프롬프트+수동 구현 포인트, Blueprint JSON), STEP 8 완료 보고 PA 파일명 추가 |
 | 2026-03-15 | v2.0 | 성능 최적화 — reconsult-guide.md 지연 로드 (피드백 시에만, ~522토큰 절감), ai-score-compare에서 blocklist_context 전달 구조 반영 |
+| 2026-03-17 | v2.0.1 | STEP 6 분기 로직 구조화 — STEP 6-A 추가 (solution_id에서 "PowerAutomate" 포함 여부 판단), STEP 6-1~4 명시적 순서 정의, STEP 6 최종 확인 체크리스트 추가, STEP 7 generate_excel/generate_pa_flow 전달 명시, STEP 7-E/7-P 조건부 실행 강조, STEP 8 확인 사항 추가. 목표: PA 플로우 자동 생성 방지, 사용자 확인 필수화 |
+| 2026-03-17 | v2.1.0 | STEP 7-P 전면 재설계 — PA Copilot 프롬프트 섹션 제거, 섹션 구성을 Step-by-step UI 설정 매뉴얼 방식으로 전환. 섹션2=사전준비(커넥터 연결), 섹션3=Step N 형식 단계별 설정 가이드(플로우생성→액션추가→조건분기→변수매핑→테스트), 섹션4=오류 유형별 PA 설정 방법(Scope+Configure run after 등). pa-flow-prompt-guide.md 의존성 제거. |

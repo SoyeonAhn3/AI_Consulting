@@ -206,25 +206,41 @@ def main():
     shutil.copy2(TEMPLATE_PATH, output_path)
     wb = load_workbook(output_path)
 
+    print(f"[DEBUG] 템플릿 시트 목록: {wb.sheetnames}")
+
     # ── KR 시트 채우기 ────────────────────────────────────────
     if output_language in ("ko", "en+ko") and "ko" in payload:
-        ws_kr = wb[KR_SHEET]
-        data_kr = dict(payload["ko"])
-        _flatten_revisions(data_kr, revisions, rev_total, rev_light, rev_full)
-        _insert_extra_revision_rows(ws_kr, revisions)
-        fill_sheet(ws_kr, data_kr)
-        remove_italic(ws_kr)
-        auto_adjust_row_heights(ws_kr)
+        try:
+            ws_kr = wb[KR_SHEET]
+            print(f"[DEBUG] KR 시트 찾음: {KR_SHEET}")
+            data_kr = dict(payload["ko"])
+            print(f"[DEBUG] KR 데이터 항목 수: {len(data_kr)}")
+            _flatten_revisions(data_kr, revisions, rev_total, rev_light, rev_full)
+            _insert_extra_revision_rows(ws_kr, revisions)
+            fill_sheet(ws_kr, data_kr)
+            remove_italic(ws_kr)
+            auto_adjust_row_heights(ws_kr)
+            print(f"[DEBUG] KR 시트 채우기 완료")
+        except KeyError as e:
+            print(f"[ERROR] KR 시트 못 찾음: {e}")
+            print(f"[ERROR] 사용 가능한 시트: {wb.sheetnames}")
 
     # ── EN 시트 채우기 ────────────────────────────────────────
     if output_language in ("en", "en+ko") and "en" in payload:
-        ws_en = wb[EN_SHEET]
-        data_en = dict(payload["en"])
-        _flatten_revisions(data_en, revisions, rev_total, rev_light, rev_full)
-        _insert_extra_revision_rows(ws_en, revisions)
-        fill_sheet(ws_en, data_en)
-        remove_italic(ws_en)
-        auto_adjust_row_heights(ws_en)
+        try:
+            ws_en = wb[EN_SHEET]
+            print(f"[DEBUG] EN 시트 찾음: {EN_SHEET}")
+            data_en = dict(payload["en"])
+            print(f"[DEBUG] EN 데이터 항목 수: {len(data_en)}")
+            _flatten_revisions(data_en, revisions, rev_total, rev_light, rev_full)
+            _insert_extra_revision_rows(ws_en, revisions)
+            fill_sheet(ws_en, data_en)
+            remove_italic(ws_en)
+            auto_adjust_row_heights(ws_en)
+            print(f"[DEBUG] EN 시트 채우기 완료")
+        except KeyError as e:
+            print(f"[ERROR] EN 시트 못 찾음: {e}")
+            print(f"[ERROR] 사용 가능한 시트: {wb.sheetnames}")
 
     wb.save(output_path)
     print(f"[OK] Excel 보고서 저장 완료: {output_path}")
