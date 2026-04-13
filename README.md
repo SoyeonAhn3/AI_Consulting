@@ -2,7 +2,7 @@
 
 Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3종 의견 비교 및 최종 산출물 파일을 생성하는 CLI 에이전트.
 
-<video src="./assets/AIConsulting.mp4" width="100%" autoplay loop muted></video>
+https://github.com/user-attachments/assets/bdbe956b-0d4d-4b26-9e3f-67c9856180af
 
 ---
 
