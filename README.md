@@ -104,198 +104,6 @@ Microsoft 생태계 내 업무 자동화 솔루션을 분석·제안하고, AI 3
 > **구현 원칙**: Python 없음. SKILL.md + Reference 파일만으로 동작.
 > 로깅은 Write/Edit 툴로 JSONL 직접 기록, 분석은 Claude LLM이 인라인 처리.
 
-```
-n8n/
-├── README.md
-├── UserRequirement_Draft.md        # 요구사항 문서
-│
-├── logs/                           # 자동 생성 (.gitignore 권장)
-│   ├── ai_analysis/
-│   │   └── ai_analysis_YYYYMMDD.jsonl
-│   ├── dev/
-│   │   └── dev_YYYYMMDD.jsonl
-│   ├── session/
-│   │   └── session_YYYYMMDD_NNN.json   # 세션별 컨설팅 상태 파일
-│   └── test/
-│       └── test_YYYYMMDD.jsonl
-│
-├── archive/                        # 이력 아카이브 (.gitignore 권장)
-│   ├── Consulting_Summary.csv      # 컨설팅 요약 누적 (고정 파일명, 영구 보존)
-│   └── raw/                        # Cold Storage — 4주 이상 JSONL (1주 후 최종 삭제)
-│
-├── references/
-│   ├── blocklist.md                # deprecated / 사용 불가 MS 제품 목록
-│   ├── solutions.md                # 검증된 MS 솔루션 데이터 (Deep 모드 참고용)
-│   ├── parsing-guide.md            # 도메인 분류 기준 / 신뢰도 공식
-│   ├── schema.md                   # ai-analysis / dev-log 이벤트 스키마
-│   ├── reconsult-guide.md          # 재컨설팅 A/B/C 타입 판정 기준 + 경계 케이스 예시
-│   └── skill-map.md                # 스킬 연동 관계 / 트리거 / Reference 사용 관계
-│
-├── Word_Template/                  # Excel 보고서 생성 (#19)
-│   ├── 컨설팅결과_보고서_템플릿.xlsx  # KR + EN 2시트 템플릿 ({{PLACEHOLDER}} 형식)
-│   └── fill_excel_template.py      # JSON payload → Excel 채우기 스크립트
-│
-├── Phase/                          # Phase별 상세 개발 문서
-│   ├── Phase1_기반구축.md           # ✅ 완료
-│   ├── Phase2_핵심엔진.md           # ✅ 재설계 완료
-│   ├── Phase3_산출물생성.md         # ✅ 실행 검증 완료
-│   └── Phase4_품질검증.md           # 🚧 진행 중
-│
-└── .claude/
-    └── skills/
-        ├── skill-template/SKILL.md        # ✅ 공통 기준 템플릿
-        ├── dev-log/SKILL.md               # ✅ Phase 1 [general]
-        ├── ai-analysis/SKILL.md           # ✅ Phase 1 완료 v2.0 [general]
-        ├── readme-update/SKILL.md         # ✅ Phase 1 [general]
-        ├── parse-requirement/SKILL.md     # ✅ Phase 1 완료 v5.0 [project-specific]
-        ├── ai-multi-discussion/SKILL.md   # ✅ 공통 [general]
-        ├── phase-doc/SKILL.md             # ✅ 공통 [general]
-        ├── ms-solution-recommend/SKILL.md # ✅ Phase 2 완료 v3.0 [project-specific]
-        ├── ai-score-compare/SKILL.md      # ✅ Phase 2 완료 v3.3 [project-specific]
-        ├── generate-output/SKILL.md       # ✅ Phase 3 완료 v1.7 [project-specific]
-        ├── consult/SKILL.md               # ✅ Phase 3 완료 v1.6 [project-specific]
-        │   └── references/reconsult-guide.md
-        ├── test-log/SKILL.md              # ✅ Phase 1 완료 [general]
-        └── archive/SKILL.md               # ✅ Phase 4 완료 v1.0 [general]
-```
-
----
-
-## 시스템 아키텍처
-
-```
-[User Input]
-     │
-     ▼
-[parse-requirement]           Phase 1 — 요구사항 파싱 + session_id 생성 + 상태 파일 초기화
-     │
-     ▼
-[적합성 게이트]               Phase 4 #16 — MS 업무자동화 범위 판정 (consult STEP 1-5)
-     ├── 진행 가능     → 자동 진행 (안내만 출력)
-     ├── 부분 지원 가능 → 지원 범위 표시 + 사용자 확인
-     └── 지원 대상 아님 → 안내 후 종료
-     │
-     ├──── Quick 모드 ─────────────────────────────────────────────────────┐
-     │      Claude 자유 분석 (ms-solution-recommend 미사용)                 │
-     │      blocklist.md 차단 체크                                          │
-     │      1패스: 리스크 평가 (탈락 가능성 기준)                            │
-     │      2패스: 권고안 확정                                               │
-     │      출력: 권장 1 / 검토필요 1~2 / 비추천 0~1                         │
-     │                                                                      │
-     └──── Deep 모드 ──────────────────────────────────────────────────────┤
-            AI 상태 확인 (3개→정상 / 2개→경고+선택 / 1개→Quick 자동 전환)    │
-            solutions.md 참고 준비 (요구사항 먼저, solutions.md 나중)         │
-            3 AI 순차 실행 → JSON 파싱 → FALLBACK 처리                       │
-            Claude Orchestrator: 각 AI 입장 예상 반론 구조화                  │
-            공통 강점 / 공통 리스크 추출                                       │
-            1패스 → 2패스 리스크 평가                                         │
-            출력: 공통 스키마 + Deep 부록                                      │
-     ┌───────────────────────────────────────────────────────────────────────┘
-     │
-     ▼
-[사용자 피드백 → 재컨설팅 분기]
-     ├── 타입 A (솔루션 ID 유지 + 조건 조정) → 경량 재컨설팅 (최대 3회)
-     ├── 타입 B (핵심 MS 제품 조합 변경)     → 사용자 확인 후 전체 재컨설팅
-     ├── 타입 C (설명 요청)                  → 설명 응답만 + 안내 문구
-     └── Quick→Deep 전환                    → 전체 재컨설팅 처리 + 최신 revision 시드
-     │
-     ▼
-[MS 지원 확인]              WebSearch — 권고안 선택 후 실행
-     │                       결과 → 자동 A/B 분류 (ms_verify_retry 최대 2회)
-     │
-     ▼
-[generate-output]           Phase 3 — 산출물 파일 생성
-     ├── 본문: 최종 권고안 (공통 스키마)
-     ├── 부록 A: 재컨설팅 이력 (session_id 필터 기반, 있을 때만)
-     └── 부록 B: Deep AI 비교 (Deep 모드만)
-
-[dev-log]       ◄── 전 Phase 공통: ERROR / CHANGE / INFO
-[ai-analysis]   ◄── 전 Phase 공통: AI_CALL / SCORE / FALLBACK
-                               + SESSION_STATE / REVISION / MODE_SWITCH / MS_VERIFY (신규)
-```
-
----
-
-## 공통 출력 스키마
-
-Quick과 Deep 모두 동일한 기본 스키마를 사용한다.
-
-```
-[공통 기본 출력]
-  솔루션명
-  솔루션 ID   : 핵심 MS 제품 조합 (예: PowerAutomate+SharePointList+Outlook)
-  적용 이유
-  구현 개요   : 단계 목록
-  전제조건
-  한계점
-  리스크 및 고려사항
-    (보안)    리스크명: 설명 / 대응 방안
-    (라이선스) 리스크명: 설명 / 대응 방안
-    (운영)    리스크명: 설명 / 대응 방안
-    고려사항  : 확인/결정 필요 사항
-  판정        : 권장 | 검토필요 | 비추천
-
-[Deep 전용 부록]
-  AI별 제안 비교 테이블
-  상호 리뷰 요약
-  공통 강점 / 공통 리스크
-  실행 AI: Codex ✅/❌ | Gemini ✅/❌ | Claude ✅
-```
-
-**리스크 출력 깊이:**
-
-| 항목 | Quick | Deep |
-|---|---|---|
-| 설명 | 1줄 요약 | 상세 설명 |
-| 영향도 | 생략 | 높음/중간/낮음 |
-| 발생 조건 | 생략 | 발생 조건 + 확인 방법 |
-| 대응 방안 | 짧게 | 상세 |
-
----
-
-## 세션 관리
-
-```
-session_id 형식: consult_YYYYMMDD_NNN
-생성 시점: parse-requirement 실행 시 자동 생성
-
-상태 파일: logs/session/session_YYYYMMDD_NNN.json
-{
-  "session_id": "consult_20260309_001",
-  "mode": "quick | deep",
-  "current_revision": 0,
-  "solution_id_current": "핵심MS제품조합",
-  "light_revision_count": 0,      ← 전체 재컨설팅/모드 전환 시 리셋
-  "total_revision_count": 0,      ← 절대 리셋 안 함
-  "ms_verify_retry_count": 0,     ← 최대 2회, 초과 시 수동 확인 안내
-  "created_at": "...",
-  "updated_at": "..."
-}
-```
-
----
-
-## solutions.md / blocklist.md 역할
-
-| 파일 | Quick | Deep | 역할 |
-|---|---|---|---|
-| `blocklist.md` | 차단 체크 | 차단 체크 | deprecated / 사용 불가 제품 즉시 차단 |
-| `solutions.md` | 미사용 | 참고만 | 검증된 라이선스·구현난이도 데이터 제공 (제약 아님) |
-
----
-
-## 재컨설팅 규칙
-
-| 타입 | 기준 | 처리 | 카운터 |
-|---|---|---|---|
-| A | 솔루션 ID 유지 + 조건 조정 | 경량 재컨설팅 | light +1, total +1 |
-| B | 핵심 MS 제품 조합 변경 | 사용자 확인 후 전체 재컨설팅 | light 리셋, total +1 |
-| C | 설명 요청 | 설명 응답만 | 변동 없음 |
-| 모드 전환 | Quick→Deep | 전체 재컨설팅 처리 | light 리셋, total +1 |
-
-- 경량 재컨설팅 3회 초과 시 전체 재컨설팅 권장 안내
-- 타입 B 사용자 거부(override) 허용: 경고 표시 + 로그 기록 + 산출물 부록 명시
-
 ---
 
 ## 실행 환경
@@ -303,18 +111,18 @@ session_id 형식: consult_YYYYMMDD_NNN
 | 항목 | 내용 |
 |---|---|
 | OS | Windows 10 / macOS |
-| IDE | VSCode |
+| IDE | VSCode + Claude Code |
 | AI CLI | Codex CLI, Gemini CLI |
 | 로그 포맷 | JSONL (UTF-8) |
 
 ---
 
-## 스킬 실행 방법
+## 사용법
 
-모든 기능은 Claude Code 스킬로 실행한다. Python 코드 직접 실행 없음.
+모든 기능은 Claude Code 스킬로 실행한다.
 
 ```bash
-# 컨설팅 시작
+# 컨설팅 시작 (전체 흐름 자동 진행)
 /consult
 
 # 요구사항 파싱만 실행
@@ -328,53 +136,113 @@ session_id 형식: consult_YYYYMMDD_NNN
 
 # 이력 정리 (4주 이상 로그 아카이브)
 /archive
+
+# Word 사용자 매뉴얼 생성
+/gen-manual
 ```
 
 ---
 
-## Phase 상세 문서
+## `/consult` 실행 흐름
 
-| 문서 | 상태 | 내용 |
-|---|---|---|
-| [Phase1_기반구축.md](./Phase/Phase1_기반구축.md) | ✅ 완료 / 🔄 일부 수정 예정 | dev-log, ai-analysis, readme-update, parse-requirement, ai-multi-discussion, skill-template |
-| [Phase2_핵심엔진.md](./Phase/Phase2_핵심엔진.md) | ✅ 재설계 완료 | ms-solution-recommend v3.0, ai-score-compare v3.0, blocklist.md |
-| [Phase3_산출물생성.md](./Phase/Phase3_산출물생성.md) | ✅ 실행 검증 완료 | generate-output v1.2, consult v1.0 / Quick·Deep 전체 흐름 + 재컨설팅 A/B/C 분기 실행 검증 완료 |
-| [Phase4_품질검증.md](./Phase/Phase4_품질검증.md) | ✅ 완료 | 다국어/적합성 게이트/Excel/토큰최적화v2~v4/ROI 예측 완료 (#12~#24) |
-| [Phase5_PA플로우설계.md](./Phase/Phase5_PA플로우설계.md) | 🚧 진행 중 | 산출물 헤더 요구사항 요약(#25 완료), PA 플로우 설계 생성(#26 구현 예정) |
+```
+[사용자 입력] → 요구사항 파싱 → 적합성 판정 → 모드 선택(Quick/Deep)
+     → AI 분석·권고안 도출 → 사용자 피드백(재컨설팅 가능)
+     → MS 지원 확인 → 산출물 생성(.txt / .xlsx / PA 플로우)
+```
+
+- **Quick**: Claude 단독 분석, 빠른 권고안
+- **Deep**: AI 3종(Claude + Codex + Gemini) 독립 제안 → 상호 리뷰 → 공통 강점/리스크 추출
+- 재컨설팅, 세션 관리, 출력 스키마 상세 → [`consult/SKILL.md`](.claude/skills/consult/SKILL.md)
 
 ---
 
-## 변경 이력
+## 스킬 목록
 
-| 날짜 | 버전 | 내용 |
-|---|---|---|
-| 2026-03-06 | v0.1 | README 최초 작성, Phase 1 착수 (dev-log, ai-analysis, readme-update) |
-| 2026-03-06 | v0.2 | Phase 1 완료 — parse-requirement 개발 완료, Phase 구조 도입 |
-| 2026-03-06 | v0.3 | 스킬 설계 개선 — 범용/전용 분류, 공통 템플릿(skill-template) 생성, 전체 SKILL.md 표준화 |
-| 2026-03-06 | v0.4 | Phase 상세 문서 생성 (Phase/ 디렉토리), phase-doc 스킬 생성, README 완료 모듈 사용법 보완 |
-| 2026-03-06 | v0.5 | Phase 2 완료 — ms_solution_recommender.py (지식 베이스 8종), ai_score_compare.py (Quick/Deep/Fallback), SKILL.md 2개 |
-| 2026-03-09 | v0.6 | 전체 아키텍처 재설계 — Quick/Deep 모드 분리, 자유 제안 방식, 리스크 기반 평가, 재컨설팅 시스템, 세션 관리, MS 지원 확인, 공통 출력 스키마 확정 |
-| 2026-03-09 | v0.7 | 전 스킬 재설계 완료 — parse-requirement v3.0, ai-analysis v2.0, ms-solution-recommend v3.0, ai-score-compare v3.0, generate-output v1.0(신규), consult v1.0(신규) / 신규 참조 파일: reconsult-guide.md, skill-map.md |
-| 2026-03-09 | v0.8 | Python 제거 — src/ 디렉토리 전체 삭제. 모든 스킬이 SKILL.md + Reference 파일만으로 동작하도록 확정. 구현 원칙: Reference 우선, Python은 불가피한 경우만 허용 |
-| 2026-03-09 | v0.9 | 전체 테스트 실행 및 개선 — test-log 스킬 신규 생성, generate-output v1.1(요구사항 요약 섹션·출력 깊이 규칙·Quick/Deep 리스크 분기 추가), consult SKILL.md 개선(타입 C→A 전환 명시·타입 A 재출력 규칙·confirmed 추가 조건 처리), logs/ 4개 하위 폴더 분리(ai_analysis/dev/session/test), 전 스킬 경로 수정 |
-| 2026-03-10 | v1.0 | Phase 3 실행 검증 완료 — Quick 모드(재고 취합) + Deep 모드(권한 전처리) 전체 흐름 실행. generate-output v1.2(output_mode 파라미터: integrated/user/developer/split). 재컨설팅 A/B/C 분기 검증 완료(타입 C 설명응답·타입 A Rev.1 파라미터 변경·타입 B 전체재컨설팅·타입 B user_override). Codex CLI --skip-git-repo-check 버그 수정. skill references 구조화(blocklist.md → ai-score-compare/ms-solution-recommend, reconsult-guide.md → consult/references/). skill-template references 생성 가이드 추가. |
-| 2026-03-10 | v1.1 | Phase 4 착수 — 다국어 지원(영문) #12 SKILL.md 구현 완료. parse-requirement v4.0(입력 언어 자동 감지 ko/en, 이중 확인 화면, session 파일 input_language 필드). generate-output v1.3(output_language 파라미터, 영문 레이블 매핑표 45개, 파일명 _EN suffix). consult STEP 6 언어 선택 추가. ai-score-compare Deep 모드 영문 프롬프트 분기. |
-| 2026-03-10 | v1.2 | #12 이중언어(en+ko) 추가 — generate-output v1.4(_BILINGUAL suffix, 영문 본문+한국어 번역 단일 파일), consult 언어 선택 옵션 3번 추가. #16 적합성 게이트 설계 확정 — Phase 4 신규 항목, consult STEP 1-5 3단계 분기(진행 가능 자동/부분 지원 확인/지원 대상 아님 종료), v1.2 구현 예정. |
-| 2026-03-10 | v1.3 | #16 적합성 게이트 구현 완료(consult v1.2). #17 토큰 최적화 — ai-score-compare v3.2(기본 요약 출력+상세보기 트리거, -70%), consult v1.3(WebSearch Evidence Summary 압축, -95%). #18 archive 스킬 v1.0 신규(4주 보존+CSV 요약+Cold Storage 2단계 삭제). 경로 오류 수정 — dev-log/ai-analysis/parse-requirement mkdir 서브폴더 경로 수정. 범용 스킬에 archive 추가. |
-| 2026-03-11 | v1.4 | #19 Excel 보고서 생성 — KR/EN 2시트 템플릿(컨설팅결과_보고서_템플릿.xlsx), fill_excel_template.py(플레이스홀더 채우기·이탤릭 제거·행높이 자동조정·revision 동적 행 추가), consult STEP 6 Excel 질문 + STEP 7-E, output_language 연동(ko→KR시트 / en→EN시트 / en+ko→둘 다). consult v1.4, generate-output v1.5 |
-| 2026-03-11 | v1.5 | #20 토큰 최적화 v2 — Reference 분리 6종(excel-output-schema/deep-mode-guide/phase-template/label-map/reconsult-guide/risk-evaluation-guide), consult/generate-output SKILL.md ~50% 압축, CLAUDE.md 중복 제거(-600토큰/턴), JSON 빈 필드 skip(fill_excel_template.py regex 치환). #21 MS 제품 카탈로그 확장 — Forms/Planner/AI Builder solutions.md 추가(#13~15), ms-product-catalog.md 신규(STEP 0 항상 로드 Quick/Deep 공통). ai-score-compare v3.3, consult v1.5 |
-| 2026-03-11 | v1.6 | #22 토큰 최적화 v3 (UX 간소화) — generate-output v1.6 헤더 단순화(요구사항 요약 섹션 제거), consult v1.6 STEP 3 요구사항 1줄 요약 규칙 추가, ai-score-compare v3.3 채점표·리스크표·분석 중간 표 출력 금지. 추가 ~1,350 토큰 절감 (~27%) |
-| 2026-03-11 | v1.7 | #23 ROI 예측 — roi-estimation-guide.md 신규(도메인별 기준값+시나리오+단위변환), parse-requirement v5.0(Q4 소요시간 수집, 다단위 파싱 일/주/월/년), generate-output v1.7(ROI 블록 조건부 출력, 3시나리오 모드), excel-output-schema.md ROI 9필드, Excel KR/EN 시트 ROI 섹션(Section 5) |
-| 2026-03-11 | v1.8 | #24 토큰 최적화 v4 — label-map.md 58줄→18줄(#1), ai-score-compare 중복 리스크표+blocklist블록 제거(#3), parse-requirement STEP1-5+STEP2 표 압축(#5), 합계 ~800토큰 SKILL.md 절감. consult v1.7 컨텍스트 압축 A/B/C 추가(~800~1,600토큰/사이클). archive/Consulting_Summary.csv 고정 파일명 확정(generate-output+archive 경로 동기화). excel-output-schema ROI_SCENARIO_LOW/MID/HIGH 제거(6필드로 정리) |
-| 2026-03-11 | v1.9 | Phase 5 착수 — #25 산출물 헤더 요구사항 요약 블록 ✅ 완료(generate-output v1.9, 자동화 대상/현재 도구/프로세스 3필드). #26 PA 플로우 설계 생성 설계 확정(consult STEP 7-P 신규, output/PA_Flow/.txt + logs/PA_log/.json, pa-flow-prompt-guide.md 신규 예정, ~1,800토큰/실행). Phase 4 완료 처리 |
-| 2026-03-11 | v2.0 | Phase 5 완료 — #26 PA 플로우 설계 생성 ✅ 구현 완료. consult v1.8(STEP 7-P: 4섹션 구성+예외처리 체크리스트), pa-flow-prompt-guide.md(트리거 8종/커넥터표/복잡도/예외처리 패턴/예시 3종), 산출물 생성일시 날짜만 표기(generate-output v1.9 / consult STEP 7-P). Phase 5 완료 처리 |
+### 범용(General) — 다른 프로젝트에도 이식 가능
+
+| 스킬 | 설명 |
+|---|---|
+| `dev-log` | 에러/수정 이유/변경 내역 JSONL 기록 |
+| `ai-analysis` | AI 호출·채점·세션 상태 이벤트 기록 |
+| `readme-update` | README 자동 갱신 |
+| `ai-multi-discussion` | AI 3자 의견 수집·비교·최적안 도출 |
+| `archive` | 4주 이상 로그 아카이브 + CSV 요약 |
+| `test-log` | 스킬 테스트 관찰사항 기록/조회 |
+| `phase-doc` | Phase 상세 개발 문서 작성·갱신 |
+| `skill-template` | 스킬 공통 표준 템플릿 |
+| `gen-manual` | Word 사용자 매뉴얼 자동 생성 |
+
+### 전용(Project-specific) — 이 프로젝트에 특화
+
+| 스킬 | 설명 |
+|---|---|
+| `consult` | 전체 흐름 오케스트레이터 (파싱→분석→피드백→산출물) |
+| `parse-requirement` | 요구사항 구조화 + session_id 생성 |
+| `ai-score-compare` | Quick/Deep 리스크 2패스 평가 → 권고안 도출 |
+| `ms-solution-recommend` | Deep 모드 참고 데이터 제공 (solutions.md) |
+| `generate-output` | 산출물 파일 생성 (.txt / .xlsx) |
+
+---
+
+## 프로젝트 구조
+
+```
+AI_Consulting/
+├── README.md
+├── UserRequirement_Draft.md
+│
+├── logs/                           # 자동 생성 (.gitignore 권장)
+│   ├── ai_analysis/
+│   ├── dev/
+│   ├── session/                    # 세션별 컨설팅 상태 파일
+│   └── test/
+│
+├── archive/                        # 이력 아카이브 (.gitignore 권장)
+│   ├── Consulting_Summary.csv      # 컨설팅 요약 누적 (영구 보존)
+│   └── raw/                        # Cold Storage (1주 후 최종 삭제)
+│
+├── references/
+│   ├── blocklist.md                # deprecated / 사용 불가 MS 제품 목록
+│   ├── solutions.md                # 검증된 MS 솔루션 데이터 (Deep 참고용)
+│   ├── reconsult-guide.md          # 재컨설팅 A/B/C 타입 판정 기준
+│   ├── schema.md                   # 이벤트 스키마
+│   └── skill-map.md                # 스킬 연동 관계
+│
+├── Word_Template/                  # Excel 보고서 생성
+│   ├── 컨설팅결과_보고서_템플릿.xlsx
+│   └── fill_excel_template.py
+│
+├── Phase/                          # Phase별 상세 개발 문서
+│   ├── Phase1_기반구축.md
+│   ├── Phase2_핵심엔진.md
+│   ├── Phase3_산출물생성.md
+│   ├── Phase4_품질검증.md
+│   └── Phase5_PA플로우설계.md
+│
+└── .claude/skills/                 # Claude Code 스킬 정의
+```
+
+---
+
+## 개발 현황
+
+| Phase | 내용 | 상태 | 상세 문서 |
+|---|---|---|---|
+| 1 | 기반 구축 (로깅, 파싱, 세션) | ✅ 완료 | [Phase1](./Phase/Phase1_기반구축.md) |
+| 2 | 핵심 엔진 (Quick/Deep 평가) | ✅ 완료 | [Phase2](./Phase/Phase2_핵심엔진.md) |
+| 3 | 산출물 생성 + 흐름 통합 | ✅ 완료 | [Phase3](./Phase/Phase3_산출물생성.md) |
+| 4 | 다국어/적합성 게이트/Excel/토큰 최적화/ROI | ✅ 완료 | [Phase4](./Phase/Phase4_품질검증.md) |
+| 5 | PA 플로우 설계 생성 | ✅ 완료 | [Phase5](./Phase/Phase5_PA플로우설계.md) |
+
+미착수: `generate-test-list`, Notion 연동, 웹 UI(보류)
+골든 테스트 케이스는 충분한 사용자 테스트 후 생성 예정
 
 ---
 
 ## 참고 문서
 
 - [UserRequirement.md](./UserRequirement.md) — 전체 요구사항
-- `.claude/skills/` — Claude Code 스킬 정의
-- `references/blocklist.md` — deprecated / 사용 불가 MS 제품 목록
-- `references/reconsult-guide.md` — 재컨설팅 A/B/C 타입 판정 기준 및 경계 케이스 예시
-- `references/skill-map.md` — 전체 스킬 연동 관계, 트리거, Reference 사용 관계 정리
+- [`references/skill-map.md`](./references/skill-map.md) — 스킬 연동 관계·트리거·Reference 사용 관계
+- [`references/reconsult-guide.md`](./references/reconsult-guide.md) — 재컨설팅 A/B/C 판정 기준
+- [`.claude/skills/`](.claude/skills/) — 각 스킬 SKILL.md (내부 스키마·규칙·세션 관리 상세)

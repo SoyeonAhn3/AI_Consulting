@@ -1,6 +1,6 @@
 ---
 name: parse-requirement
-version: 4.0
+version: 5.0
 description: 사용자의 자유 형식 업무 자동화 요구사항을 업무 도메인/자동화 대상/현재 도구/제약 조건으로 구조화하고 불명확 항목은 추가 질문으로 보완한다. 입력 언어(한국어/영문)를 자동 감지하여 동일 언어로 파싱 결과를 반환한다. session_id를 생성하고 세션 상태 파일을 초기화한다.
 depends_on: []
 produces:
@@ -13,7 +13,7 @@ produces:
 
 사용자의 자유 형식 업무 자동화 요구사항을 Claude LLM이 직접 분석하여 구조화된 `ParsedRequirement`로 변환한다.
 파싱 확정 시 session_id를 생성하고 세션 상태 파일을 초기화한다.
-스키마 및 도메인 분류 기준은 `references/parsing-guide.md`를 참고한다.
+스키마 및 도메인 분류 기준은 아래 STEP 1 인라인 참조 데이터를 사용한다.
 
 ---
 
@@ -42,15 +42,115 @@ produces:
 
 ---
 
-## STEP 1 — 파싱 가이드 로드
+## STEP 1 — 파싱 참조 데이터 (인라인)
 
-파싱 전 반드시 먼저 실행:
+아래 데이터를 파싱 시 참조한다. (별도 파일 로드 불필요)
 
+### 도메인 분류 목록
+
+| 도메인 | 키워드 예시 |
+|---|---|
+| 이메일/발송 | 메일, 이메일, 발송, 수신, 알림, 뉴스레터, 공지 |
+| 문서/결재 | 결재, 승인, 보고서, 기안, 계약서, 문서 관리 |
+| 데이터/분석 | 데이터 취합, 집계, 리포트, 대시보드, 통계, 분석 |
+| 일정/회의 | 회의, 일정, 캘린더, 예약, 미팅 |
+| 구매/조달 | 발주, 구매, 조달, 견적, 납품 |
+| 재무/회계 | 전표, 마감, 정산, 비용, 예산, 급여 |
+| HR/인사 | 온보딩, 휴가, 근태, 채용, 인사 |
+| 고객/영업 | 고객, CRM, 영업, 수주, 견적, 고객사 |
+| 재고/물류 | 재고, 입출고, 배송, 물류, 창고 |
+| IT/시스템 | 모니터링, 알람, 배포, 백업, 시스템 연동 |
+
+복수 도메인 감지 시: 후보 목록 표시 후 사용자 선택 요청.
+
+### 프로세스 유형 키워드 매핑
+
+| 유형 | 키워드 |
+|---|---|
+| 정기실행 | 매일, 매주, 매월, 정기, 주기, 반복, 자동으로, 오전 N시, 월요일마다 |
+| 이벤트기반 | ~하면, ~발생 시, ~등록되면, ~변경되면, ~제출되면, 트리거 |
+| 수동트리거 | 요청 시, 클릭하면, 버튼, 수동, 필요할 때 |
+| 복합 | 위 유형이 2개 이상 혼재 |
+
+### 신뢰도 계산 공식
+
+아래 STEP 3 참조.
+
+### 경고 조건
+
+| 조건 | 경고 메시지 |
+|---|---|
+| confidence < 0.5 | "파싱 정확도가 낮습니다. 보완 후 재파싱을 권장합니다." |
+| 복합 도메인 감지 | "복합 도메인 감지: [후보 목록] 중 1개를 선택해주세요." |
+| automation_targets 불명확 | "자동화 대상이 불명확합니다. 구체적인 업무 프로세스를 추가해주세요." |
+| external_systems 존재 | "[시스템명] 연동 필요. 기술 검토가 필요할 수 있습니다." |
+
+### operational_params 도메인별 수집 기준
+
+#### 공통 파라미터 (모든 도메인)
+
+| 파라미터 | 설명 | 값 예시 |
+|---|---|---|
+| weekly_hours | 현재 업무 주간 소요 시간 (ROI 계산용) | `{"value": 180, "unit": "min", "input": "주 3시간"}` |
+
+`weekly_hours` 입력 파싱 규칙:
 ```
-Read(".claude/skills/parse-requirement/references/parsing-guide.md")
+"일 1시간"      → value: 300, unit: "min/week", basis: "day"  (×5근무일)
+"월 2시간"      → value: 120, unit: "min/month", basis: "month"
+"년 12회 58시간" → value: 3480, unit: "min/year", basis: "year", count: 12
+"주 3시간"      → value: 180, unit: "min/week", basis: "week"
+"건당 10분"     → value: null, unit: "min/item", basis: "item" (send_volume과 결합)
+"모름" / 엔터   → null (시나리오 모드)
 ```
 
-→ 도메인 분류 기준, 신뢰도 계산 공식, 경고 조건 확인
+#### 이메일/발송 도메인
+
+| 파라미터 | 설명 | 값 예시 |
+|---|---|---|
+| send_volume | 발송 규모 | "소규모" (100건 이하) / "대규모" (100건 초과) |
+| has_attachment | 첨부파일 여부 | true / false |
+| needs_retry | 발송 실패 시 재시도 필요 여부 | true / false |
+| needs_send_log | 발송 이력 저장 필요 여부 | true / false |
+
+#### 문서/결재 도메인
+
+| 파라미터 | 설명 | 값 예시 |
+|---|---|---|
+| needs_version_control | 버전 관리 필요 여부 | true / false |
+| needs_access_control | 접근 권한 관리 필요 여부 | true / false |
+
+#### 데이터/분석 도메인
+
+| 파라미터 | 설명 | 값 예시 |
+|---|---|---|
+| data_refresh_cycle | 데이터 갱신 주기 | "실시간" / "일별" / "주별" / "월별" |
+| data_volume | 데이터 규모 | "소규모" / "대규모" |
+
+### 외부 시스템 분류 기준
+
+current_tools에서 아래 항목은 external_systems로 별도 분류:
+- SAP, ERP (Oracle ERP, Microsoft Dynamics 등)
+- CRM (Salesforce, HubSpot 등)
+- 그룹웨어 (더존, iCUBE, Workday 등)
+- 레거시 시스템 / 사내 자체 개발 시스템
+- 물류/SCM 시스템
+
+external_systems 존재 시 ms_products_hint에 Azure Logic Apps 포함 고려.
+
+### ms_products_hint 추론 기준
+
+| 상황 | 추천 힌트 |
+|---|---|
+| external_systems 존재 | Azure Logic Apps |
+| 정기 발송 | Power Automate |
+| 문서 결재 | Power Automate + SharePoint |
+| 데이터 집계/리포트 | Power BI + Power Automate |
+| 이메일 발송 | Power Automate + Outlook |
+| 대용량 데이터 | Azure Data Factory |
+
+### 직접 입력 폼 참고
+
+직접 입력값 사용 시 confidence = 1.0 설정.
 
 ---
 
@@ -72,7 +172,7 @@ Read(".claude/skills/parse-requirement/references/parsing-guide.md")
 
 | 필드 | ko 키워드 | en 키워드 | 처리 규칙 |
 |---|---|---|---|
-| domain | parsing-guide.md 도메인 목록 | 영문 도메인명 허용 | 복수 감지 시 후보 나열, 사용자 선택 |
+| domain | STEP 1 도메인 목록 | 영문 도메인명 허용 | 복수 감지 시 후보 나열, 사용자 선택 |
 | automation_targets | "자동화", "~처리", "~발송" | "automate", "process", "send" | 여러 개 → 개별 분리 |
 | current_tools | 도구/시스템명 직접 추출 | 동일 | — |
 | constraints | 라이선스, 보안, 기간, 예산 | license, security, deadline | — |
@@ -81,13 +181,13 @@ Read(".claude/skills/parse-requirement/references/parsing-guide.md")
 | process_type | 매주/매일/정기→정기실행 / ~하면/~발생 시→이벤트기반 | scheduled/recurring→Scheduled / when/triggered→Event-based / manually→Manual | 혼합→복합/Mixed |
 | technical_unknowns | API 권한, 데이터 형식, 연동 가능 여부 | 동일 | — |
 | clarification_needed | 위 항목 미확인 시 질문 추가 | en 입력 시 영문 질문 | — |
-| weekly_hours | 소요 시간 언급 시 자동 추출; 없으면 clarification 마지막에 추가: "현재 이 업무에 소요되는 시간은 얼마나 되나요? (예: 일 1시간, 주 3시간, 월 2시간, 모름)" | "How much time does this task currently take? (e.g., 1hr/day, 3hrs/week, 2hrs/month, unknown)" | parsing-guide.md weekly_hours 변환 규칙 적용 |
+| weekly_hours | 소요 시간 언급 시 자동 추출; 없으면 clarification 마지막에 추가: "현재 이 업무에 소요되는 시간은 얼마나 되나요? (예: 일 1시간, 주 3시간, 월 2시간, 모름)" | "How much time does this task currently take? (e.g., 1hr/day, 3hrs/week, 2hrs/month, unknown)" | STEP 1 weekly_hours 변환 규칙 적용 |
 
 ---
 
 ## STEP 3 — 신뢰도 계산
 
-parsing-guide.md의 신뢰도 공식으로 계산:
+아래 공식으로 계산:
 
 ```
 domain 확인됨       → +40점
@@ -282,7 +382,6 @@ data:
 | logs/ 디렉토리 없음 | Bash로 `mkdir -p logs/session && mkdir -p logs/dev` 후 재시도 |
 | 상태 파일 생성 실패 | 사용자에게 알림 후 session_id 없이 계속 진행 (파싱 결과는 반환) |
 | dev-log 기록 실패 | 파싱 결과는 반환, dev-log 스킵 후 사용자 알림 |
-| parsing-guide.md 로드 실패 | 경로 확인 요청 후 중단 |
 
 ---
 
@@ -304,3 +403,4 @@ data:
 |---|---|---|
 | 2026-03-09 | v3.0 | session_id 생성 + 세션 상태 파일 초기화 추가 |
 | 2026-03-10 | v4.0 | 다국어 지원 추가 — STEP 1-5 입력 언어 자동 감지(ko/en), STEP 2 영문 키워드 파싱, STEP 4 이중 언어 확인 화면, 세션 파일 input_language/output_language 필드 추가 |
+| 2026-03-15 | v5.0 | 성능 최적화 — parsing-guide.md 인라인 통합 (Read() 1회 제거) |

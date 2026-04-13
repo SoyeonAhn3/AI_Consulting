@@ -10,6 +10,14 @@ logs/
 archive/
 output/
 
+# 보안 (API 키, 인증 정보)
+.env
+*.env
+api.env
+credentials.json
+*.pem
+*.key
+
 # 시스템 파일
 .DS_Store
 Thumbs.db
